@@ -60,6 +60,29 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Rider Location Throttling
+    |--------------------------------------------------------------------------
+    |
+    | Movement-based throttle: location updates closer than the minimum
+    | distance (metres) are skipped. The latest location is also cached for
+    | fast dispatch reads with a TTL (seconds).
+    */
+    'rider_location_min_distance_m' => env('ALABIQ_RIDER_LOCATION_MIN_DISTANCE_M', 25),
+    'rider_location_ttl' => env('ALABIQ_RIDER_LOCATION_TTL', 300),
+
+    /*
+    |--------------------------------------------------------------------------
+    | ETA Speeds (km/h per vehicle type)
+    |--------------------------------------------------------------------------
+    */
+    'eta_speeds' => [
+        'bike' => env('ALABIQ_ETA_SPEED_BIKE', 20),
+        'car' => env('ALABIQ_ETA_SPEED_CAR', 35),
+        'scooter' => env('ALABIQ_ETA_SPEED_SCOOTER', 25),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Pusher Configuration (for real-time updates)
     |--------------------------------------------------------------------------
     */

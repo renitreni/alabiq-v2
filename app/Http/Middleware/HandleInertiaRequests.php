@@ -47,8 +47,11 @@ class HandleInertiaRequests extends Middleware
                         'slug' => $user->restaurant->slug,
                         'logo' => $user->restaurant->logo,
                     ] : null,
-                    // Phase 5: rider relation + riders table not yet created; add back then.
-                    'rider' => null,
+                    'rider' => $user->rider ? [
+                        'id' => $user->rider->id,
+                        'is_online' => $user->rider->is_online,
+                        'vehicle_type' => $user->rider->vehicle_type,
+                    ] : null,
                 ] : null,
             ],
             'flash' => [
@@ -60,7 +63,7 @@ class HandleInertiaRequests extends Middleware
                 'locale' => app()->getLocale(),
                 'timezone' => config('app.timezone'),
                 'currency' => config('alabiq.currency', 'SAR'),
-                'mapbox_token' => config('services.mapbox.token'),
+                'mapbox_token' => config('alabiq.mapbox.token'),
             ],
         ]);
     }

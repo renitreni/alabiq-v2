@@ -3,10 +3,13 @@
 use App\Http\Controllers\Api\Customer\CustomerAddressController;
 use App\Http\Controllers\Api\Marketplace\CartController;
 use App\Http\Controllers\Api\Marketplace\MarketplaceController;
+use App\Http\Controllers\Api\Order\DispatchController;
 use App\Http\Controllers\Api\Order\OrderController;
+use App\Http\Controllers\Api\Order\OrderTrackingController;
 use App\Http\Controllers\Api\Payment\PaymentController;
 use App\Http\Controllers\Api\Payment\TapPaymentsWebhookController;
 use App\Http\Controllers\Api\Restaurant\RestaurantStorefrontController;
+use App\Http\Controllers\Api\Rider\RiderController;
 use Illuminate\Support\Facades\Route;
 
 // Public Marketplace API routes
@@ -45,6 +48,17 @@ Route::middleware('auth:sanctum')->prefix('orders')->name('orders.')->group(func
     Route::get('/', [OrderController::class, 'index'])->name('index');
     Route::get('/{order}', [OrderController::class, 'show'])->name('show');
     Route::patch('/{order}/status', [OrderController::class, 'updateStatus'])->name('update-status');
+    Route::post('/{order}/assign-rider', [DispatchController::class, 'assignRider'])->name('assign-rider');
+    Route::get('/{order}/tracking', [OrderTrackingController::class, 'show'])->name('tracking');
+});
+
+// Protected Rider API routes (require authentication)
+Route::middleware('auth:sanctum')->prefix('rider')->name('rider.')->group(function () {
+    Route::put('/availability', [RiderController::class, 'updateAvailability'])->name('availability');
+    Route::post('/location', [RiderController::class, 'updateLocation'])->name('location');
+    Route::get('/assignments', [RiderController::class, 'assignments'])->name('assignments');
+    Route::post('/assignments/{assignment}/accept', [RiderController::class, 'accept'])->name('assignments.accept');
+    Route::post('/assignments/{assignment}/reject', [RiderController::class, 'reject'])->name('assignments.reject');
 });
 
 // Payment routes (require authentication)

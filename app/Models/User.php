@@ -58,6 +58,14 @@ class User extends Authenticatable
     }
 
     /**
+     * Rider profile (when role is rider).
+     */
+    public function rider(): HasOne
+    {
+        return $this->hasOne(Rider::class);
+    }
+
+    /**
      * Check whether the user has any of the given roles.
      */
     public function hasRole(string ...$roles): bool

@@ -8,6 +8,10 @@
     @inertiaHead
     <link href="/courier-v1.0.0/build/assets/css/theme.min.css" rel="stylesheet" />
     <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@200;300;400;500;600;700;800&display=swap" rel="stylesheet" />
+    @if(config('alabiq.mapbox.token'))
+    <link href="https://api.mapbox.com/mapbox-gl-js/v3.8.0/mapbox-gl.css" rel="stylesheet" />
+    <script src="https://api.mapbox.com/mapbox-gl-js/v3.8.0/mapbox-gl.js"></script>
+    @endif
     @vite(['resources/css/app.css', 'resources/js/app.tsx'])
 </head>
 <body>
