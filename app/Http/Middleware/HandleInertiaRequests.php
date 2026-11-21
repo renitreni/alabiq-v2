@@ -4,7 +4,6 @@ namespace App\Http\Middleware;
 
 use Illuminate\Http\Request;
 use Inertia\Middleware;
-use Tightenco\Ziggy\Ziggy;
 
 class HandleInertiaRequests extends Middleware
 {
@@ -48,16 +47,9 @@ class HandleInertiaRequests extends Middleware
                         'slug' => $user->restaurant->slug,
                         'logo' => $user->restaurant->logo,
                     ] : null,
-                    'rider' => $user->rider ? [
-                        'id' => $user->rider->id,
-                        'is_online' => $user->rider->is_online,
-                        'vehicle_type' => $user->rider->vehicle_type,
-                    ] : null,
+                    // Phase 5: rider relation + riders table not yet created; add back then.
+                    'rider' => null,
                 ] : null,
-            ],
-            'ziggy' => fn () => [
-                ...(new Ziggy)->toArray(),
-                'location' => $request->url(),
             ],
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),

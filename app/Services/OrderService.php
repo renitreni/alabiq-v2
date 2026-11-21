@@ -15,8 +15,18 @@ use Illuminate\Support\Facades\DB;
 class OrderService
 {
     public function __construct(
-        private CartService $cartService
+        private CartService $cartService,
+        private ?VatService $vatService = null
     ) {}
+
+    /**
+     * Lazily resolve the VAT service so direct `new OrderService(new CartService)`
+     * call sites (tests, scripts) keep working.
+     */
+    private function vat(): VatService
+    {
+        return $this->vatService ??= new VatService;
+    }
 
     /**
      * Place a new order from the cart.
@@ -59,6 +69,8 @@ class OrderService
         }
 
         return DB::transaction(function () use ($cart, $validatedData, $user, $branch) {
+            $vatAmount = $this->vat()->amount((float) $cart['subtotal']);
+
             $order = Order::create([
                 'user_id' => $user->id,
                 'restaurant_id' => $cart['restaurant_id'],
@@ -69,9 +81,9 @@ class OrderService
                 'payment_status' => 'pending',
                 'subtotal' => $cart['subtotal'],
                 'delivery_fee' => $cart['delivery_fee'],
-                'tax_amount' => round($cart['subtotal'] * config('alabiq.vat_rate', 0.15), 2),
+                'tax_amount' => $vatAmount,
                 'discount_amount' => $validatedData['discount_amount'] ?? 0,
-                'total_amount' => $cart['total'] + round($cart['subtotal'] * config('alabiq.vat_rate', 0.15), 2) - ($validatedData['discount_amount'] ?? 0),
+                'total_amount' => $cart['total'] + $vatAmount - ($validatedData['discount_amount'] ?? 0),
                 'snapshot_data' => [
                     'restaurant' => [
                         'id' => $cart['branch']['restaurant_id'] ?? $cart['restaurant_id'],
