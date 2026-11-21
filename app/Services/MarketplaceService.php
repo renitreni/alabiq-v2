@@ -5,12 +5,24 @@ namespace App\Services;
 use App\Models\Cuisine;
 use App\Models\MenuItem;
 use App\Models\Restaurant;
-use App\Models\RestaurantBranch;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 
 class MarketplaceService
 {
+    public function __construct(
+        private ?CoverageService $coverageService = null
+    ) {}
+
+    /**
+     * Lazily resolve the coverage service so direct `new MarketplaceService`
+     * call sites keep working.
+     */
+    private function coverage(): CoverageService
+    {
+        return $this->coverageService ??= new CoverageService;
+    }
+
     public function searchRestaurants(array $filters = [], int $perPage = 12): LengthAwarePaginator
     {
         $query = Restaurant::query()
@@ -177,41 +189,14 @@ class MarketplaceService
         return Cuisine::active()->get(['id', 'name', 'slug', 'icon', 'image']);
     }
 
+    /**
+     * Delivery coverage check — delegates to CoverageService.
+     *
+     * @return array{covered: bool, in_custom_zone: bool, delivery_fee: float, minimum_order: float, estimated_delivery_time: int, zone_name: string|null, branch_id: int}
+     */
     public function checkDeliveryCoverage(int $branchId, float $latitude, float $longitude): array
     {
-        $branch = RestaurantBranch::query()
-            ->with('deliveryZones')
-            ->find($branchId);
-
-        if (! $branch) {
-            return [
-                'covered' => false,
-                'delivery_fee' => 0,
-                'minimum_order' => 0,
-                'estimated_delivery_time' => 0,
-                'message' => 'Restaurant branch not found',
-            ];
-        }
-
-        foreach ($branch->deliveryZones as $zone) {
-            if ($zone->containsPoint($latitude, $longitude)) {
-                return [
-                    'covered' => true,
-                    'delivery_fee' => (float) $zone->delivery_fee,
-                    'minimum_order' => (float) $zone->minimum_order,
-                    'estimated_delivery_time' => (int) $zone->estimated_delivery_time,
-                    'zone_name' => $zone->name,
-                ];
-            }
-        }
-
-        return [
-            'covered' => true,
-            'delivery_fee' => (float) $branch->delivery_fee,
-            'minimum_order' => (float) $branch->minimum_order,
-            'estimated_delivery_time' => (int) $branch->estimated_delivery_time,
-            'zone_name' => 'Standard Delivery',
-        ];
+        return $this->coverage()->checkCoverage($branchId, $latitude, $longitude);
     }
 
     public function getNearbyRestaurants(float $latitude, float $longitude, int $radiusKm = 10, int $limit = 10): Collection

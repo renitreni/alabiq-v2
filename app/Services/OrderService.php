@@ -16,7 +16,8 @@ class OrderService
 {
     public function __construct(
         private CartService $cartService,
-        private ?VatService $vatService = null
+        private ?VatService $vatService = null,
+        private ?CoverageService $coverageService = null
     ) {}
 
     /**
@@ -26,6 +27,14 @@ class OrderService
     private function vat(): VatService
     {
         return $this->vatService ??= new VatService;
+    }
+
+    /**
+     * Lazily resolve the coverage service (same backward-compatibility reason).
+     */
+    private function coverage(): CoverageService
+    {
+        return $this->coverageService ??= new CoverageService;
     }
 
     /**
@@ -58,6 +67,22 @@ class OrderService
 
         if ($cart['subtotal'] < $branch->minimum_order) {
             throw new \Exception("Minimum order amount is {$branch->minimum_order} SAR");
+        }
+
+        // The saved address must belong to the customer and be within coverage.
+        $address = null;
+        if (! empty($validatedData['customer_address_id'])) {
+            $address = $user->customerAddresses()->find($validatedData['customer_address_id']);
+
+            if (! $address) {
+                throw new \Exception('Selected delivery address does not belong to you');
+            }
+
+            $coverageCheck = $this->coverage()->validateAddressForBranch($address, $branch->id);
+
+            if (! $coverageCheck['valid']) {
+                throw new \Exception($coverageCheck['error'] ?? 'Delivery address is outside the coverage area');
+            }
         }
 
         // Validate all items are still available

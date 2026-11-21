@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\Customer\CustomerAddressController;
 use App\Http\Controllers\Api\Marketplace\CartController;
 use App\Http\Controllers\Api\Marketplace\MarketplaceController;
 use App\Http\Controllers\Api\Order\OrderController;
@@ -29,6 +30,13 @@ Route::prefix('marketplace')->name('marketplace.')->group(function () {
     Route::put('/cart/branch', [CartController::class, 'setBranch'])->name('cart.set-branch');
     Route::get('/cart/validate', [CartController::class, 'validateCheckout'])->name('cart.validate');
     Route::post('/cart/checkout', [CartController::class, 'checkout'])->name('cart.checkout');
+});
+
+// Protected customer routes (require authentication)
+Route::middleware('auth:sanctum')->prefix('customer')->name('customer.')->group(function () {
+    Route::patch('/addresses/{address}/default', [CustomerAddressController::class, 'setDefault'])->name('addresses.default');
+    Route::apiResource('addresses', CustomerAddressController::class)
+        ->only(['index', 'store', 'show', 'update', 'destroy']);
 });
 
 // Protected Order API routes (require authentication)
