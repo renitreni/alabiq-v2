@@ -17,11 +17,11 @@ export const Navbar: React.FC<NavbarProps> = ({
     className = '',
 }) => {
     return (
-        <nav className={`navbar navbar-expand-lg bg-white shadow-[var(--alabiq-shadow-sm)] ${className}`} role="navigation" aria-label="Main navigation">
-            <div className="container-fluid px-4">
-                <Link to="/" className="navbar-brand" aria-label={`${logoAlt} - Home`}>
-                    <img src={logo} alt={logoAlt} height="40" className="me-2" />
-                    <span className="fw-bold text-[var(--alabiq-gray-900)]">{logoAlt}</span>
+        <nav className={`navbar navbar-expand-lg navbar-light bg-white py-3 d-block ${className}`.trim()} role="navigation" aria-label="Main navigation">
+            <div className="container">
+                <Link to="/" className="navbar-brand d-flex align-items-center" aria-label={`${logoAlt} - Home`}>
+                    <img src={logo} alt={logoAlt} height="45" className="me-2" />
+                    <span className="fw-bold text-1000 d-none d-sm-inline">{logoAlt}</span>
                 </Link>
 
                 <button
@@ -36,18 +36,18 @@ export const Navbar: React.FC<NavbarProps> = ({
                     <span className="navbar-toggler-icon" />
                 </button>
 
-                <div className="collapse navbar-collapse" id="navbarNav">
-                    <ul className="navbar-nav me-auto mb-2 mb-lg-0">
+                <div className="collapse navbar-collapse border-top border-lg-0 mt-4 mt-lg-0" id="navbarNav">
+                    <ul className="navbar-nav ms-auto pt-2 pt-lg-0 font-base">
                         {links.map((link, index) => (
-                            <li key={index} className="nav-item">
-                                <Link to={link.href} className="nav-link fw-medium text-[var(--alabiq-gray-700)] hover:text-[var(--alabiq-primary)] px-3 py-2">
+                            <li key={index} className="nav-item px-2">
+                                <Link to={link.href} className="nav-link">
                                     {link.label}
                                 </Link>
                             </li>
                         ))}
                     </ul>
 
-                    <div className="d-flex align-items-center gap-3">
+                    <div className="d-flex align-items-center gap-3 mt-3 mt-lg-0">
                         {userMenu}
                     </div>
                 </div>

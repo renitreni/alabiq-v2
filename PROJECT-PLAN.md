@@ -9,8 +9,8 @@ I'm in **Plan mode** — I'll present the complete implementation plan incorpora
 | Decision | Value |
 |---|---|
 | **Frontend Stack** | React + TypeScript + Inertia.js |
-| **CSS Framework** | Bootstrap 5 (Courier theme adapted) — NOT Tailwind |
-| **Logo** | `main-logo.png` from ALABIQ root |
+| **CSS Framework** | Bootstrap 5 via the official Courier v1.0.0 theme in `public/courier-v1.0.0` — NOT Tailwind |
+| **Logo** | `alabiq-logo-full.png` from `public/images/` |
 | **Base Branch** | `main` → create feature branch from it |
 | **Database** | MySQL 8.4 (shared hosting compatible), migrations driver-aware |
 | **Testing** | Unit testing integrated into every phase (PHPUnit 11) |
@@ -31,9 +31,9 @@ All work happens on `feat/alabiq-marketplace`. When complete, you'll open a PR t
 
 ---
 
-### 2. Frontend Architecture (Inertia.js + React + TypeScript + Bootstrap 5)
+### 2. Frontend Architecture (Inertia.js + React + TypeScript + Courier v1.0.0)
 
-The existing ALABIQ uses Blade + Tailwind. We're adding Inertia.js + React + TypeScript on top, with Bootstrap 5 for the Courier theme styling.
+The existing ALABIQ uses Blade + Tailwind. We're adding Inertia.js + React + TypeScript on top, with Courier v1.0.0 (`public/courier-v1.0.0`) as the official theme and source of Bootstrap 5 styling.
 
 **New dependencies to add:**
 - `@inertiajs/react`, `@inertiajs/laravel`
@@ -47,7 +47,7 @@ The existing ALABIQ uses Blade + Tailwind. We're adding Inertia.js + React + Typ
 ```
 resources/
 ├── css/
-│   └── app.css              (Bootstrap 5 + Courier theme overrides + ALABIQ brand tokens)
+│   └── app.css              (Alabiq-specific overrides only; Courier CSS loaded in app.blade.php)
 ├── js/
 │   ├── app.ts               (Inertia + React bootstrap)
 │   ├── inertia.ts           (Inertia client config)
@@ -207,8 +207,8 @@ tests/Unit/
 - Install Inertia.js + React + TypeScript + Bootstrap 5
 - Configure Vite with React plugin and TypeScript
 - Set up shared layout components (Guest, Customer, Restaurant, Rider, SuperAdmin)
-- Integrate `main-logo.png` as the platform logo across all layouts
-- Adapt Courier theme Bootstrap 5 styles into Tailwind-compatible CSS (or pure Bootstrap 5)
+- Integrate `alabiq-logo-full.png` as the platform logo across all layouts
+- Load the official Courier v1.0.0 theme CSS from `public/courier-v1.0.0` and build layouts with its Bootstrap 5 classes
 - Database migrations: `restaurant_branches`, `restaurant_delivery_zones`, `menu_item_option_values`, `menu_item_availability`, `customer_addresses`
 - Models: `RestaurantBranch`, `RestaurantDeliveryZone`, `MenuItemOptionValue`, `MenuItemAvailability`, `CustomerAddress`
 - Auth middleware for Inertia (Sanctum + role-based guards)
@@ -287,7 +287,7 @@ tests/Unit/
 | `vite.config.js` | Add React plugin, TypeScript support, Bootstrap 5 entry |
 | `routes/web.php` | Add Inertia SSR routes for all dashboards |
 | `resources/js/app.ts` | Inertia + React bootstrap |
-| `resources/css/app.css` | Bootstrap 5 + Courier theme + ALABIQ brand colors |
+| `resources/css/app.css` | Alabiq-specific overrides only; official theme CSS loaded in `resources/views/app.blade.php` |
 | `config/alabiq.php` | Add payment, commission, Mapbox, notification config |
 | `database/migrations/*` | New tables (21 migrations) |
 | `app/Policies/*` | New policies (5 policies) |
@@ -297,16 +297,16 @@ tests/Unit/
 
 ---
 
-### 8. Bootstrap 5 + Courier Theme Adaptation
+### 8. Courier v1.0.0 Official Theme Integration
 
-The Courier theme is Bootstrap 5-based. We will:
-1. Install Bootstrap 5 via npm (not CDN, for production reliability)
-2. Extract Courier's SCSS variables (colors, spacing, typography) and map them to Bootstrap 5 Sass variables
-3. Import Courier's component SCSS (buttons, cards, nav, testimonials, hero sections) into the Vite build
-4. Use ALABIQ's brand colors from `main-logo.png` (red/orange brand) as the primary palette
-5. Build React components that wrap Bootstrap 5 classes (e.g., `<Button variant="primary">`, `<Card>`, `<Navbar>`)
-6. RTL support via Bootstrap 5 RTL or logical CSS properties for Arabic
-7. All layouts are responsive (mobile-first for customer ordering)
+`public/courier-v1.0.0` is the official UI theme. Do not replace it with another theme or reintroduce Tailwind. We will:
+1. Load `build/assets/css/theme.min.css` globally from `resources/views/app.blade.php`.
+2. Use theme assets from `build/assets/img/` and theme utilities (`bg-100`, `bg-900`, `text-primary`, `btn-danger`, `card-span`, etc.).
+3. Keep `resources/css/app.css` limited to Alabiq-specific overrides.
+4. Use Alabiq branding assets from `public/images/` (`alabiq-logo-full.png`, `alabiq-icon.png`).
+5. Build React components that wrap Courier/Bootstrap classes (e.g., `<Button variant="primary">`, `<Card>`, `<Navbar>`).
+6. Use `theme-rtl.min.css` or logical CSS properties for RTL/Arabic support.
+7. Keep all layouts responsive (mobile-first for customer ordering).
 
 ---
 
@@ -318,7 +318,7 @@ Once you toggle to **Act mode**, I will:
 2. Create feature branch `feat/alabiq-marketplace`
 3. Install Inertia.js + React + TypeScript + Bootstrap 5 dependencies
 4. Configure Vite and Laravel for Inertia SSR
-5. Create the base layout components with `main-logo.png` integration
+5. Create the base layout components with the official Courier theme and `alabiq-logo-full.png` integration
 6. Run `php artisan test` to confirm the existing test suite still passes
 7. Begin Phase 1 migrations and models
 

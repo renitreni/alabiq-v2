@@ -43,7 +43,9 @@ class RestaurantDeliveryZone extends Model
         if ($this->zone_type === 'circle') {
             $center = $this->coordinates['center'] ?? [];
             $radius = $this->coordinates['radius'] ?? 0;
-            if (empty($center)) return false;
+            if (empty($center)) {
+                return false;
+            }
 
             $distance = $this->calculateDistance(
                 $lat, $lng,
@@ -55,7 +57,9 @@ class RestaurantDeliveryZone extends Model
 
         // Polygon check (ray casting algorithm)
         $polygon = $this->coordinates['coordinates'] ?? [];
-        if (empty($polygon)) return false;
+        if (empty($polygon)) {
+            return false;
+        }
 
         return $this->pointInPolygon($lat, $lng, $polygon[0]);
     }
@@ -69,6 +73,7 @@ class RestaurantDeliveryZone extends Model
              cos(deg2rad($lat1)) * cos(deg2rad($lat2)) *
              sin($dLng / 2) * sin($dLng / 2);
         $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
+
         return $earthRadius * $c;
     }
 
@@ -87,7 +92,7 @@ class RestaurantDeliveryZone extends Model
                          ($lat < ($xj - $xi) * ($lng - $yi) / ($yj - $yi) + $xi);
 
             if ($intersect) {
-                $inside = !$inside;
+                $inside = ! $inside;
             }
             $j = $i;
         }

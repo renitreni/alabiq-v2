@@ -17,18 +17,18 @@ export default function RestaurantShow() {
                                     <div className="p-4 h-100 d-flex flex-column justify-content-between">
                                         <div>
                                             <div className="d-flex flex-wrap gap-2 mb-2">
-                                                <span className="badge bg-[var(--alabiq-primary-light)] text-[var(--alabiq-primary)]">Burgers</span>
-                                                <span className="badge bg-[var(--alabiq-primary-light)] text-[var(--alabiq-primary)]">American</span>
-                                                <span className="badge bg-[var(--alabiq-primary-light)] text-[var(--alabiq-primary)]">Fast Food</span>
+                                                <span className="badge bg-soft-primary text-primary">Burgers</span>
+                                                <span className="badge bg-soft-primary text-primary">American</span>
+                                                <span className="badge bg-soft-primary text-primary">Fast Food</span>
                                             </div>
-                                            <h1 className="fw-bold text-[var(--alabiq-gray-900)] mb-2">Burger Palace</h1>
-                                            <div className="d-flex flex-wrap gap-3 text-[var(--alabiq-gray-600)] small mb-3">
+                                            <h1 className="fw-bold text-1000 mb-2">Burger Palace</h1>
+                                            <div className="d-flex flex-wrap gap-3 text-700 small mb-3">
                                                 <span>⭐ 4.7 · 1,234 reviews</span>
                                                 <span>🚚 25-35 min</span>
                                                 <span>💰 10 SAR delivery</span>
                                                 <span>📍 Olaya District, Riyadh</span>
                                             </div>
-                                            <p className="text-[var(--alabiq-gray-700)]">The best burgers in town made with 100% Angus beef, fresh ingredients, and secret sauces. Family owned since 2015.</p>
+                                            <p className="text-700">The best burgers in town made with 100% Angus beef, fresh ingredients, and secret sauces. Family owned since 2015.</p>
                                         </div>
                                         <div className="d-flex gap-2 flex-wrap">
                                             <Button variant="primary" size="lg" className="flex-1">Order Now</Button>
@@ -54,9 +54,9 @@ export default function RestaurantShow() {
                                                 <div className="flex-1">
                                                     <div className="d-flex justify-content-between align-items-start">
                                                         <h6 className="fw-bold mb-1">Classic Cheeseburger</h6>
-                                                        <span className="fw-bold text-[var(--alabiq-primary)]">28 SAR</span>
+                                                        <span className="fw-bold text-primary">28 SAR</span>
                                                     </div>
-                                                    <p className="text-[var(--alabiq-gray-600)] small mb-2">Angus beef, cheddar, lettuce, tomato, secret sauce</p>
+                                                    <p className="text-700 small mb-2">Angus beef, cheddar, lettuce, tomato, secret sauce</p>
                                                     <Button variant="outline" size="sm">Add</Button>
                                                 </div>
                                             </CardBody>
@@ -70,22 +70,22 @@ export default function RestaurantShow() {
                         <Card variant="outlined" className="sticky-top" style={{ top: 100 }}>
                             <CardBody>
                                 <h5 className="fw-bold mb-3">Your Order</h5>
-                                <div className="mb-3 p-3 bg-[var(--alabiq-gray-50)] rounded text-center text-[var(--alabiq-gray-500)]">
+                                <div className="mb-3 p-3 bg-100 rounded text-center text-500">
                                     Your cart is empty
                                 </div>
                                 <div className="border-top pt-3">
                                     <div className="d-flex justify-content-between mb-2">
-                                        <span className="text-[var(--alabiq-gray-600)]">Subtotal</span>
+                                        <span className="text-700">Subtotal</span>
                                         <span className="fw-bold">0 SAR</span>
                                     </div>
                                     <div className="d-flex justify-content-between mb-2">
-                                        <span className="text-[var(--alabiq-gray-600)]">Delivery Fee</span>
+                                        <span className="text-700">Delivery Fee</span>
                                         <span className="fw-bold">10 SAR</span>
                                     </div>
                                     <hr />
                                     <div className="d-flex justify-content-between mb-3">
                                         <span className="fw-bold">Total</span>
-                                        <span className="fw-bold text-[var(--alabiq-primary)] fs-5">10 SAR</span>
+                                        <span className="fw-bold text-primary fs-5">10 SAR</span>
                                     </div>
                                     <Button variant="primary" className="w-100" disabled>Proceed to Checkout</Button>
                                 </div>

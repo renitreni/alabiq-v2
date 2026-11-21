@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -9,7 +10,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class RestaurantBranch extends Model
 {
-    use SoftDeletes;
+    use HasFactory, SoftDeletes;
 
     protected $fillable = [
         'restaurant_id',
@@ -80,6 +81,9 @@ class RestaurantBranch extends Model
     public function isOpen(): bool
     {
         $now = now()->format('H:i');
-        return $this->opens_at <= $now && $this->closes_at >= $now;
+        $opensAt = $this->opens_at?->format('H:i') ?? '00:00';
+        $closesAt = $this->closes_at?->format('H:i') ?? '23:59';
+
+        return $opensAt <= $now && $closesAt >= $now;
     }
 }

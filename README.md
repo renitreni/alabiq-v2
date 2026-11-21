@@ -7,6 +7,18 @@
 <a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
 </p>
 
+## Official UI Theme
+
+`public/courier-v1.0.0` is the **official UI theme** for Alabiq. All frontend work must use it as the source of truth.
+
+- Stylesheet: `public/courier-v1.0.0/build/assets/css/theme.min.css`
+- RTL stylesheet: `public/courier-v1.0.0/build/assets/css/theme-rtl.min.css`
+- Images and illustrations: `public/courier-v1.0.0/build/assets/img/`
+- Typography: Raleway, loaded in `resources/views/app.blade.php`
+- App-specific overrides: `resources/css/app.css` only
+
+Do not introduce Tailwind or a separate Bootstrap theme. Build UI with Courier/Bootstrap utility classes (`bg-100`, `bg-900`, `text-primary`, `btn-danger`, `card-span`, etc.) and keep Alabiq branding assets in `public/images/`.
+
 ## About Laravel
 
 Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:

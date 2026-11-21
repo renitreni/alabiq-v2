@@ -46,7 +46,7 @@ export default function Search() {
                     </div>
                     <div className="col-lg-9">
                         <div className="d-flex justify-content-between align-items-center mb-4">
-                            <h2 className="fw-bold mb-0">Restaurants (<span className="text-[var(--alabiq-primary)]">124</span>)</h2>
+                            <h2 className="fw-bold mb-0">Restaurants (<span className="text-primary">124</span>)</h2>
                             <div className="d-flex gap-2">
                                 <select className="form-select form-select-sm" style={{ width: 'auto' }}>
                                     <option>Relevance</option>

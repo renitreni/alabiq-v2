@@ -21,10 +21,10 @@ export const SuperAdminLayout: React.FC<SuperAdminLayoutProps> = ({
                 <link rel="icon" href="/favicon.ico" />
                 <link rel="preconnect" href="https://fonts.googleapis.com" />
                 <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-                <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+                <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@200;300;400;500;600;700;800&display=swap" rel="stylesheet" />
             </Head>
 
-            <div className="min-h-screen bg-[var(--alabiq-gray-50)] flex flex-col">
+            <div className="min-vh-100 bg-100 d-flex flex-column">
                 <Navbar
                     logo="/images/alabiq-logo-full.png"
                     logoAlt="Alabiq Admin"
@@ -65,9 +65,9 @@ export const SuperAdminLayout: React.FC<SuperAdminLayoutProps> = ({
 
                 <main className="flex-1 py-4">{children}</main>
 
-                <footer className="bg-[var(--alabiq-gray-900)] text-white py-4 mt-auto">
+                <footer className="bg-900 text-white py-4 mt-auto">
                     <div className="container px-4 text-center">
-                        <p className="text-[var(--alabiq-gray-500)] small mb-0">&copy; 2025 Alabiq. All rights reserved.</p>
+                        <p className="text-500 small mb-0">&copy; 2026 Alabiq. All rights reserved.</p>
                     </div>
                 </footer>
             </div>

@@ -20,6 +20,10 @@ RUN apk add --no-cache \
     nodejs \
     npm \
     redis \
+    autoconf \
+    gcc \
+    g++ \
+    make \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install -j$(nproc) \
     pdo_mysql \
@@ -69,6 +73,11 @@ RUN chown -R www-data:www-data /var/www/html \
 # Copy nginx and supervisor configs
 COPY docker/nginx.conf /etc/nginx/nginx.conf
 COPY docker/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+
+# Configure PHP-FPM pool to use the correct socket and create log directory
+RUN sed -i 's/^;listen = 127.0.0.1:9000/listen = \/var\/run\/php\/php8.4-fpm.sock/' /usr/local/etc/php-fpm.d/www.conf \
+    && mkdir -p /var/run/php /usr/local/var/log \
+    && chown www-data:www-data /var/run/php /usr/local/var/log
 
 # Expose port
 EXPOSE 80

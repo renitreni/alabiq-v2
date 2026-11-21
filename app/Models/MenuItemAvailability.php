@@ -57,33 +57,48 @@ class MenuItemAvailability extends Model
 
     public function isCurrentlyAvailable(): bool
     {
-        if (!$this->is_available) return false;
+        if (! $this->is_available) {
+            return false;
+        }
 
         $now = now();
         $today = $now->dayOfWeek; // 1=Mon, 7=Sun (Carbon uses 0=Sun, 6=Sat)
 
         // Check date range
-        if ($this->available_from_date && $now->lt($this->available_from_date)) return false;
-        if ($this->available_until_date && $now->gt($this->available_until_date)) return false;
+        if ($this->available_from_date && $now->lt($this->available_from_date)) {
+            return false;
+        }
+        if ($this->available_until_date && $now->gt($this->available_until_date)) {
+            return false;
+        }
 
         // Check days of week
-        if ($this->days_of_week && !in_array($today, $this->days_of_week)) return false;
+        if ($this->days_of_week && ! in_array($today, $this->days_of_week)) {
+            return false;
+        }
 
         // Check time range
         if ($this->available_from && $this->available_until) {
             $currentTime = $now->format('H:i');
-            if ($currentTime < $this->available_from || $currentTime > $this->available_until) return false;
+            if ($currentTime < $this->available_from || $currentTime > $this->available_until) {
+                return false;
+            }
         }
 
         // Check stock
-        if ($this->track_stock && $this->stock_quantity !== null && $this->stock_quantity <= 0) return false;
+        if ($this->track_stock && $this->stock_quantity !== null && $this->stock_quantity <= 0) {
+            return false;
+        }
 
         return true;
     }
 
     public function isLowStock(): bool
     {
-        if (!$this->track_stock || $this->stock_quantity === null) return false;
+        if (! $this->track_stock || $this->stock_quantity === null) {
+            return false;
+        }
+
         return $this->stock_quantity <= $this->low_stock_threshold;
     }
 
