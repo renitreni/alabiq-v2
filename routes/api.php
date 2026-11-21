@@ -51,6 +51,7 @@ Route::middleware('auth:sanctum')->prefix('orders')->name('orders.')->group(func
 Route::middleware('auth:sanctum')->prefix('payments')->name('payments.')->group(function () {
     Route::post('/orders/{order}/initiate', [PaymentController::class, 'initiate'])->name('initiate');
     Route::get('/orders/{order}/status', [PaymentController::class, 'status'])->name('status');
+    Route::post('/transactions/{transaction}/refund', [PaymentController::class, 'refund'])->name('transactions.refund');
 });
 
 // Tap Payments webhook (public, signature-validated)

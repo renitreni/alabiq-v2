@@ -19,6 +19,12 @@ class LedgerEntry extends Model
 
     public const ACCOUNT_REFUND = 'refund';
 
+    /**
+     * Balancing account so every posted journal nets to zero
+     * (double-entry rule): payments debit it, refunds credit it back.
+     */
+    public const ACCOUNT_ORDER_CLEARING = 'order_clearing';
+
     // Type constants
     public const TYPE_DEBIT = 'debit';
 

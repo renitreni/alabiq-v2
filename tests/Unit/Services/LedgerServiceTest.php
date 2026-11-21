@@ -42,7 +42,7 @@ class LedgerServiceTest extends TestCase
         ]);
     }
 
-    public function test_post_payment_creates_three_credit_entries(): void
+    public function test_post_payment_creates_balanced_journal(): void
     {
         $order = $this->makeOrder();
         $transaction = PaymentTransaction::factory()->create([
@@ -52,13 +52,22 @@ class LedgerServiceTest extends TestCase
 
         $entries = $this->service->postPayment($order, $transaction);
 
-        $this->assertCount(3, $entries);
-        $this->assertEquals(3, LedgerEntry::where('order_id', $order->id)->count());
+        // Three revenue credits + one balancing clearing debit.
+        $entries = collect($entries);
+        $this->assertCount(4, $entries);
+        $this->assertEquals(4, LedgerEntry::where('order_id', $order->id)->count());
+        $this->assertEquals(3, $entries->where('type', LedgerEntry::TYPE_CREDIT)->count());
+        $this->assertEquals(1, $entries->where('type', LedgerEntry::TYPE_DEBIT)->count());
 
         foreach ($entries as $entry) {
-            $this->assertEquals(LedgerEntry::TYPE_CREDIT, $entry->type);
             $this->assertEquals($transaction->id, $entry->payment_transaction_id);
         }
+
+        // The clearing debit equals the sum of the revenue credits.
+        $clearing = $entries->firstWhere('account', LedgerEntry::ACCOUNT_ORDER_CLEARING);
+        $this->assertEquals(LedgerEntry::TYPE_DEBIT, $clearing->type);
+        $this->assertEquals(110.00, (float) $clearing->amount);
+        $this->assertTrue($this->service->verifyBalances($order));
     }
 
     public function test_post_payment_uses_correct_accounts_and_amounts(): void
@@ -91,18 +100,58 @@ class LedgerServiceTest extends TestCase
         $this->assertEquals(20.00, $this->service->getAccountBalance(LedgerEntry::ACCOUNT_DELIVERY_FEE));
     }
 
-    public function test_post_refund_creates_debit_entry(): void
+    public function test_post_refund_creates_balanced_journal(): void
     {
         $order = $this->makeOrder();
         $transaction = PaymentTransaction::factory()->succeeded()->create(['order_id' => $order->id]);
 
         $entries = $this->service->postRefund($order, $transaction, 50.00);
 
-        $this->assertCount(1, $entries);
-        $this->assertEquals(LedgerEntry::ACCOUNT_REFUND, $entries[0]->account);
-        $this->assertEquals(LedgerEntry::TYPE_DEBIT, $entries[0]->type);
-        $this->assertEquals(50.00, $entries[0]->amount);
-        $this->assertEquals(-50.0, $entries[0]->signed_amount);
+        // Refund debit + clearing credit reversal, netting to zero.
+        $entries = collect($entries);
+        $this->assertCount(2, $entries);
+
+        $refund = $entries->firstWhere('account', LedgerEntry::ACCOUNT_REFUND);
+        $this->assertEquals(LedgerEntry::TYPE_DEBIT, $refund->type);
+        $this->assertEquals(50.00, $refund->amount);
+        $this->assertEquals(-50.0, $refund->signed_amount);
+
+        $clearing = $entries->firstWhere('account', LedgerEntry::ACCOUNT_ORDER_CLEARING);
+        $this->assertEquals(LedgerEntry::TYPE_CREDIT, $clearing->type);
+        $this->assertEquals(50.00, (float) $clearing->amount);
+    }
+
+    public function test_verify_balances_detects_unbalanced_journal(): void
+    {
+        $order = $this->makeOrder();
+
+        // Fabricate a one-sided journal — debits without matching credits.
+        LedgerEntry::create([
+            'order_id' => $order->id,
+            'payment_transaction_id' => null,
+            'account' => LedgerEntry::ACCOUNT_ORDER_CLEARING,
+            'type' => LedgerEntry::TYPE_DEBIT,
+            'amount' => 25.00,
+            'balance_after' => -25.00,
+            'reference' => 'broken_journal',
+            'description' => 'Fabricated unbalanced entry',
+        ]);
+
+        $this->assertFalse($this->service->verifyBalances($order));
+    }
+
+    public function test_clearing_account_nets_to_zero_across_payment_and_refund(): void
+    {
+        $order = $this->makeOrder();
+        $transaction = PaymentTransaction::factory()->succeeded()->create(['order_id' => $order->id]);
+
+        $this->service->postPayment($order, $transaction);
+        $this->service->postRefund($order, $transaction, 50.00);
+
+        $this->assertTrue($this->service->verifyBalances($order));
+        // Uniform balance convention (debits subtract): payment moved the
+        // clearing account to -110, the 50.00 refund credit brought it to -60.
+        $this->assertEquals(-60.00, $this->service->getAccountBalance(LedgerEntry::ACCOUNT_ORDER_CLEARING));
     }
 
     public function test_verify_balances_returns_true_for_valid_order(): void
@@ -124,7 +173,7 @@ class LedgerServiceTest extends TestCase
         $this->service->postPayment($order1, $tx1);
         $this->service->postPayment($order2, $tx2);
 
-        $this->assertCount(3, $this->service->getOrderEntries($order1));
-        $this->assertCount(3, $this->service->getOrderEntries($order2));
+        $this->assertCount(4, $this->service->getOrderEntries($order1));
+        $this->assertCount(4, $this->service->getOrderEntries($order2));
     }
 }

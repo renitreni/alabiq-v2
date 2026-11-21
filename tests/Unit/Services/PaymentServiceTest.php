@@ -144,7 +144,8 @@ class PaymentServiceTest extends TestCase
         $this->assertEquals(PaymentTransaction::STATUS_SUCCEEDED, $result->status);
         $this->assertEquals('paid', $this->order->fresh()->payment_status);
         $this->assertEquals(Order::STATUS_PLACED, $this->order->fresh()->status);
-        $this->assertEquals(3, $this->order->fresh()->ledgerEntries()->count());
+        // 3 revenue credits + 1 balancing clearing debit.
+        $this->assertEquals(4, $this->order->fresh()->ledgerEntries()->count());
     }
 
     public function test_handle_webhook_is_idempotent(): void

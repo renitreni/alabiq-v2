@@ -4,8 +4,10 @@ namespace App\Http\Controllers\Api\Payment;
 
 use App\Http\Controllers\Controller;
 use App\Models\Order;
+use App\Models\PaymentTransaction;
 use App\Services\PaymentService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class PaymentController extends Controller
@@ -71,5 +73,45 @@ class PaymentController extends Controller
                 'transactions' => $transactions,
             ],
         ]);
+    }
+
+    /**
+     * Process a refund (super admin only).
+     */
+    public function refund(Request $request, PaymentTransaction $transaction): JsonResponse
+    {
+        $user = Auth::user();
+
+        if (! $user->isSuperAdmin()) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $validated = $request->validate([
+            'amount' => 'required|numeric|min:0.01',
+            'reason' => 'nullable|string|max:500',
+        ]);
+
+        try {
+            $result = $this->paymentService->refund(
+                $transaction,
+                (float) $validated['amount'],
+                $user->id,
+                $validated['reason'] ?? null
+            );
+
+            return response()->json([
+                'data' => [
+                    'transaction' => $result['transaction'],
+                    'refund' => $result['refund'],
+                ],
+                'message' => 'Refund processed',
+            ]);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        } catch (\Exception $e) {
+            report($e);
+
+            return response()->json(['message' => 'Refund failed'], 500);
+        }
     }
 }

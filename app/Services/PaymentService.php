@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Order;
 use App\Models\PaymentTransaction;
+use App\Models\Refund;
 use Illuminate\Support\Facades\DB;
 
 class PaymentService
@@ -166,7 +167,7 @@ class PaymentService
     /**
      * Process a refund for a transaction.
      */
-    public function refund(PaymentTransaction $transaction, float $amount): array
+    public function refund(PaymentTransaction $transaction, float $amount, ?int $processedBy = null, ?string $reason = null): array
     {
         if (! $transaction->isRefundable()) {
             throw new \InvalidArgumentException('Transaction is not refundable');
@@ -178,17 +179,17 @@ class PaymentService
 
         // Cash on delivery refunds don't call the gateway
         if ($transaction->gateway === PaymentTransaction::GATEWAY_CASH) {
-            return $this->completeRefund($transaction, $amount, null);
+            return $this->completeRefund($transaction, $amount, null, $processedBy, $reason);
         }
 
         $result = $this->gateway->refund($transaction, $amount);
 
-        return $this->completeRefund($transaction, $amount, $result);
+        return $this->completeRefund($transaction, $amount, $result, $processedBy, $reason);
     }
 
-    private function completeRefund(PaymentTransaction $transaction, float $amount, ?array $gatewayResult): array
+    private function completeRefund(PaymentTransaction $transaction, float $amount, ?array $gatewayResult, ?int $processedBy = null, ?string $reason = null): array
     {
-        return DB::transaction(function () use ($transaction, $amount, $gatewayResult) {
+        return DB::transaction(function () use ($transaction, $amount, $gatewayResult, $processedBy, $reason) {
             $transaction->update([
                 'refunded_amount' => round((float) $transaction->refunded_amount + $amount, 2),
                 'status' => PaymentTransaction::STATUS_REFUNDED,
@@ -199,8 +200,20 @@ class PaymentService
 
             $this->ledgerService->postRefund($order, $transaction, $amount);
 
+            $refund = Refund::create([
+                'payment_transaction_id' => $transaction->id,
+                'order_id' => $order->id,
+                'amount' => $amount,
+                'currency' => $transaction->currency,
+                'reason' => $reason,
+                'processed_by' => $processedBy,
+                'status' => 'processed',
+                'gateway_response' => $gatewayResult,
+            ]);
+
             return [
                 'transaction' => $transaction->fresh(),
+                'refund' => $refund,
                 'refund_amount' => $amount,
                 'gateway_response' => $gatewayResult,
             ];

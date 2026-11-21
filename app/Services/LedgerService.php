@@ -58,6 +58,21 @@ class LedgerService
                 'Delivery fee for order #'.$order->id
             );
 
+            // Balancing debit so the journal nets to zero (double-entry).
+            $journalTotal = $breakdown['platform_commission']
+                + $breakdown['restaurant_share']
+                + $breakdown['delivery_fee'];
+
+            $entries[] = $this->post(
+                $order,
+                $transaction,
+                LedgerEntry::ACCOUNT_ORDER_CLEARING,
+                LedgerEntry::TYPE_DEBIT,
+                $journalTotal,
+                $reference,
+                'Payment received for order #'.$order->id
+            );
+
             return $entries;
         });
     }
@@ -81,6 +96,17 @@ class LedgerService
                 $amount,
                 $reference,
                 'Refund for order #'.$order->id
+            );
+
+            // Reverse the clearing entry so the refund journal also nets zero.
+            $entries[] = $this->post(
+                $order,
+                $transaction,
+                LedgerEntry::ACCOUNT_ORDER_CLEARING,
+                LedgerEntry::TYPE_CREDIT,
+                $amount,
+                $reference,
+                'Clearing reversal for refund on order #'.$order->id
             );
 
             return $entries;
@@ -140,15 +166,19 @@ class LedgerService
     }
 
     /**
-     * Verify that ledger balances are consistent (credits - debits >= 0 per account).
+     * Verify the double-entry invariant for an order: every journal
+     * (entries sharing a reference) must balance — debits equal
+     * credits. Empty ledgers are trivially balanced.
      */
     public function verifyBalances(Order $order): bool
     {
         $entries = $this->getOrderEntries($order);
 
-        foreach ($entries->groupBy('account') as $account => $accountEntries) {
-            $net = $accountEntries->sum(fn (LedgerEntry $entry) => $entry->signed_amount);
-            if ($net < 0) {
+        foreach ($entries->groupBy('reference') as $journalEntries) {
+            $debits = (float) $journalEntries->where('type', LedgerEntry::TYPE_DEBIT)->sum('amount');
+            $credits = (float) $journalEntries->where('type', LedgerEntry::TYPE_CREDIT)->sum('amount');
+
+            if (round($debits, 2) !== round($credits, 2)) {
                 return false;
             }
         }
