@@ -93,7 +93,16 @@ class OrderService
             }
         }
 
-        return DB::transaction(function () use ($cart, $validatedData, $user, $branch) {
+        $paymentMethod = $validatedData['payment_method'] ?? 'cash_on_delivery';
+
+        // Cash on delivery skips the payment gate and goes straight to the
+        // restaurant; online payments wait in pending_payment until the
+        // payment webhook confirms (PaymentService::handleWebhook).
+        $initialStatus = $paymentMethod === 'cash_on_delivery'
+            ? Order::STATUS_PLACED
+            : Order::STATUS_PENDING_PAYMENT;
+
+        return DB::transaction(function () use ($cart, $validatedData, $user, $branch, $paymentMethod, $initialStatus) {
             $vatAmount = $this->vat()->amount((float) $cart['subtotal']);
 
             $order = Order::create([
@@ -101,8 +110,8 @@ class OrderService
                 'restaurant_id' => $cart['restaurant_id'],
                 'branch_id' => $cart['branch']['id'],
                 'customer_address_id' => $validatedData['customer_address_id'] ?? null,
-                'status' => Order::STATUS_PENDING_PAYMENT,
-                'payment_method' => $validatedData['payment_method'] ?? 'cash_on_delivery',
+                'status' => $initialStatus,
+                'payment_method' => $paymentMethod,
                 'payment_status' => 'pending',
                 'subtotal' => $cart['subtotal'],
                 'delivery_fee' => $cart['delivery_fee'],
@@ -181,7 +190,7 @@ class OrderService
             OrderStatusHistory::create([
                 'order_id' => $order->id,
                 'from_status' => null,
-                'to_status' => Order::STATUS_PENDING_PAYMENT,
+                'to_status' => $initialStatus,
                 'changed_by' => $user->id,
                 'changed_by_type' => 'customer',
                 'note' => 'Order placed',
@@ -282,6 +291,17 @@ class OrderService
         $ownerId = Restaurant::find($restaurantId)?->owner_id ?? $restaurantId;
 
         return $this->transitionStatus($order, $toStatus, $ownerId, 'restaurant', $noteMap[$toStatus] ?? null);
+    }
+
+    /**
+     * Assign a rider to an order (ready -> rider_assigned).
+     *
+     * Manual assignment for Phase 3; automated dispatch arrives with
+     * DispatchService in Phase 5.
+     */
+    public function assignRider(Order $order, int $changedBy, string $changedByType = 'restaurant'): bool
+    {
+        return $this->transitionStatus($order, Order::STATUS_RIDER_ASSIGNED, $changedBy, $changedByType, 'Rider assigned to the order');
     }
 
     /**

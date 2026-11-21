@@ -20,7 +20,7 @@ class OrderController extends Controller
      */
     public function store(Request $request): JsonResponse
     {
-        $request->validate([
+        $validated = $request->validate([
             'customer_address_id' => 'nullable|integer|exists:customer_addresses,id',
             'payment_method' => 'required|string|in:cash_on_delivery,tap_payments',
             'delivery_instructions' => 'nullable|string|max:500',
@@ -30,7 +30,7 @@ class OrderController extends Controller
         $user = Auth::user();
 
         try {
-            $order = $this->orderService->placeOrder($request->validated(), $user);
+            $order = $this->orderService->placeOrder($validated, $user);
 
             return response()->json([
                 'data' => $order,
@@ -63,11 +63,10 @@ class OrderController extends Controller
     }
 
     /**
-     * Get order details.
+     * Get order details (customer, owning restaurant or super admin).
      */
     public function show(int $id): JsonResponse
     {
-        $user = Auth::user();
         $order = $this->orderService->getOrderWithDetails($id);
 
         if (! $order) {
@@ -76,12 +75,7 @@ class OrderController extends Controller
             ], 404);
         }
 
-        // Authorization: user can only see their own orders (or restaurant/rider/admin)
-        if ($order->user_id !== $user->id && ! $user->hasRole(['restaurant', 'admin'])) {
-            return response()->json([
-                'message' => 'Unauthorized',
-            ], 403);
-        }
+        $this->authorize('view', $order);
 
         return response()->json([
             'data' => $order,
@@ -90,6 +84,9 @@ class OrderController extends Controller
 
     /**
      * Update order status (restaurant/rider/admin actions).
+     *
+     * Invalid transitions and unauthorized actors return 409/403 so the
+     * client can distinguish them from validation errors (422).
      */
     public function updateStatus(Request $request, Order $order): JsonResponse
     {
@@ -106,10 +103,11 @@ class OrderController extends Controller
 
         // Restaurant actions
         if ($user->hasRole('restaurant')) {
-            $restaurantIds = $user->restaurants()->pluck('id')->toArray();
-            if (! in_array($order->restaurant_id, $restaurantIds)) {
+            if ($user->restaurant?->id !== $order->restaurant_id) {
                 return response()->json(['message' => 'Unauthorized'], 403);
             }
+
+            $this->authorize('update', $order);
 
             switch ($toStatus) {
                 case Order::STATUS_ACCEPTED:
@@ -121,6 +119,9 @@ class OrderController extends Controller
                 case Order::STATUS_PREPARING:
                 case Order::STATUS_READY:
                     $success = $this->orderService->restaurantUpdatePrepStatus($order, $toStatus, $order->restaurant_id);
+                    break;
+                case Order::STATUS_RIDER_ASSIGNED:
+                    $success = $this->orderService->assignRider($order, $user->id, 'restaurant');
                     break;
             }
         }
@@ -139,7 +140,7 @@ class OrderController extends Controller
             }
         }
         // Admin actions
-        elseif ($user->hasRole('admin')) {
+        elseif ($user->hasRole('super_admin')) {
             switch ($toStatus) {
                 case Order::STATUS_CANCELLED:
                     $success = $this->orderService->adminCancel($order, $user->id, $note ?? 'Admin cancelled the order');
@@ -147,11 +148,15 @@ class OrderController extends Controller
                 case Order::STATUS_REFUNDED:
                     $success = $this->orderService->processRefund($order, $user->id, $note ?? 'Admin processed refund');
                     break;
+                case Order::STATUS_RIDER_ASSIGNED:
+                    $success = $this->orderService->assignRider($order, $user->id, 'admin');
+                    break;
             }
         }
         // Customer actions (cancel own order)
         elseif ($order->user_id === $user->id) {
             if ($toStatus === Order::STATUS_CANCELLED) {
+                $this->authorize('cancel', $order);
                 $success = $this->orderService->customerCancel($order, $user->id, $note ?? 'Customer cancelled the order');
             }
         }

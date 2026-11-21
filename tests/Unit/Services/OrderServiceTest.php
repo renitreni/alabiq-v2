@@ -148,7 +148,9 @@ class OrderServiceTest extends TestCase
         $this->assertEquals($this->restaurant->id, $order->restaurant_id);
         $this->assertEquals($this->branch->id, $order->branch_id);
         $this->assertEquals($customerAddress->id, $order->customer_address_id);
-        $this->assertEquals(Order::STATUS_PENDING_PAYMENT, $order->status);
+        // COD orders go straight to the restaurant; online payments wait in
+        // pending_payment until the payment webhook confirms.
+        $this->assertEquals(Order::STATUS_PLACED, $order->status);
         $this->assertEquals('cash_on_delivery', $order->payment_method);
         $this->assertEquals(50.00, $order->subtotal);
         $this->assertEquals(10.00, $order->delivery_fee);
@@ -170,7 +172,7 @@ class OrderServiceTest extends TestCase
         $this->assertCount(1, $order->statusHistories);
         $history = $order->statusHistories->first();
         $this->assertNull($history->from_status);
-        $this->assertEquals(Order::STATUS_PENDING_PAYMENT, $history->to_status);
+        $this->assertEquals(Order::STATUS_PLACED, $history->to_status);
         $this->assertEquals($this->customer->id, $history->changed_by);
         $this->assertEquals('customer', $history->changed_by_type);
         $this->assertEquals('Order placed', $history->note);
@@ -178,6 +180,96 @@ class OrderServiceTest extends TestCase
         // Check snapshot data
         $this->assertArrayHasKey('restaurant', $order->snapshot_data);
         $this->assertArrayHasKey('branch', $order->snapshot_data);
+    }
+
+    public function test_place_order_with_online_payment_waits_in_pending_payment()
+    {
+        session(['alabiq_cart' => [
+            'restaurant_id' => $this->restaurant->id,
+            'branch_id' => $this->branch->id,
+            'items' => [
+                $this->menuItem->id => [
+                    'menu_item_id' => $this->menuItem->id,
+                    'name' => $this->menuItem->name,
+                    'quantity' => 1,
+                    'price' => 25.00,
+                    'options' => [],
+                    'subtotal' => 25.00,
+                ],
+            ],
+            'subtotal' => 25.00,
+        ]]);
+
+        $order = $this->orderService->placeOrder([
+            'payment_method' => 'tap_payments',
+        ], $this->customer);
+
+        $this->assertEquals(Order::STATUS_PENDING_PAYMENT, $order->status);
+        $this->assertEquals('pending', $order->payment_status);
+    }
+
+    public function test_place_order_rejects_address_owned_by_another_customer()
+    {
+        session(['alabiq_cart' => [
+            'restaurant_id' => $this->restaurant->id,
+            'branch_id' => $this->branch->id,
+            'items' => [
+                $this->menuItem->id => [
+                    'menu_item_id' => $this->menuItem->id,
+                    'name' => $this->menuItem->name,
+                    'quantity' => 1,
+                    'price' => 25.00,
+                    'options' => [],
+                    'subtotal' => 25.00,
+                ],
+            ],
+            'subtotal' => 25.00,
+        ]]);
+
+        $strangerAddress = CustomerAddress::factory()->create([
+            'user_id' => User::factory()->create()->id,
+        ]);
+
+        $this->expectException(\Exception::class);
+        $this->expectExceptionMessage('Selected delivery address does not belong to you');
+
+        $this->orderService->placeOrder([
+            'customer_address_id' => $strangerAddress->id,
+            'payment_method' => 'cash_on_delivery',
+        ], $this->customer);
+    }
+
+    public function test_assign_rider_transitions_ready_to_rider_assigned(): void
+    {
+        $order = Order::factory()->create([
+            'user_id' => $this->customer->id,
+            'restaurant_id' => $this->restaurant->id,
+            'branch_id' => $this->branch->id,
+            'status' => Order::STATUS_READY,
+        ]);
+
+        $this->assertTrue($this->orderService->assignRider($order, $this->restaurantOwner->id));
+
+        $this->assertEquals(Order::STATUS_RIDER_ASSIGNED, $order->refresh()->status);
+        // The relation returns chronological order (created_at, id ASC),
+        // so the audit trail's last entry is the newest transition.
+        $this->assertEquals(
+            Order::STATUS_RIDER_ASSIGNED,
+            $order->statusHistories->last()->to_status
+        );
+    }
+
+    public function test_assign_rider_fails_from_invalid_state(): void
+    {
+        $order = Order::factory()->create([
+            'user_id' => $this->customer->id,
+            'restaurant_id' => $this->restaurant->id,
+            'branch_id' => $this->branch->id,
+            'status' => Order::STATUS_PREPARING,
+        ]);
+
+        $this->assertFalse($this->orderService->assignRider($order, $this->restaurantOwner->id));
+        $this->assertEquals(Order::STATUS_PREPARING, $order->refresh()->status);
     }
 
     public function test_place_order_with_options_snapshots_pricing()
