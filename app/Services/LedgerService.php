@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\LedgerEntry;
 use App\Models\Order;
 use App\Models\PaymentTransaction;
+use App\Models\RestaurantSettlement;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -114,11 +115,47 @@ class LedgerService
     }
 
     /**
+     * Post the payout for one order of a paid settlement: money leaves the
+     * clearing account to the restaurant (settlement_payout contra account).
+     * Reference groups entries per order so every journal still nets zero.
+     */
+    public function postSettlementPayout(Order $order, RestaurantSettlement $settlement, float $restaurantShare): array
+    {
+        return DB::transaction(function () use ($order, $settlement, $restaurantShare) {
+            $reference = "settlement_{$settlement->id}_order_{$order->id}";
+
+            $entries = [];
+
+            $entries[] = $this->post(
+                $order,
+                null,
+                LedgerEntry::ACCOUNT_ORDER_CLEARING,
+                LedgerEntry::TYPE_DEBIT,
+                $restaurantShare,
+                $reference,
+                "Settlement #{$settlement->id} payout for order #{$order->id}"
+            );
+
+            $entries[] = $this->post(
+                $order,
+                null,
+                LedgerEntry::ACCOUNT_SETTLEMENT_PAYOUT,
+                LedgerEntry::TYPE_CREDIT,
+                $restaurantShare,
+                $reference,
+                "Settlement #{$settlement->id} payout for order #{$order->id}"
+            );
+
+            return $entries;
+        });
+    }
+
+    /**
      * Post a single ledger entry with running balance.
      */
     private function post(
         Order $order,
-        PaymentTransaction $transaction,
+        ?PaymentTransaction $transaction,
         string $account,
         string $type,
         float $amount,
@@ -135,7 +172,7 @@ class LedgerService
 
         return LedgerEntry::create([
             'order_id' => $order->id,
-            'payment_transaction_id' => $transaction->id,
+            'payment_transaction_id' => $transaction?->id,
             'account' => $account,
             'type' => $type,
             'amount' => $amount,

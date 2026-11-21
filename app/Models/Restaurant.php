@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Restaurant extends Model
@@ -101,6 +102,14 @@ class Restaurant extends Model
     public function scopeActive($query)
     {
         return $query->where('is_active', true);
+    }
+
+    /**
+     * Admin-configured commission override (active row, if any).
+     */
+    public function commissionOverride(): HasOne
+    {
+        return $this->hasOne(PlatformCommission::class)->where('is_active', true);
     }
 
     public function scopeApproved($query)

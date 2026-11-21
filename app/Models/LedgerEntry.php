@@ -25,6 +25,11 @@ class LedgerEntry extends Model
      */
     public const ACCOUNT_ORDER_CLEARING = 'order_clearing';
 
+    /**
+     * Contra account accumulating restaurant payouts (settlements).
+     */
+    public const ACCOUNT_SETTLEMENT_PAYOUT = 'settlement_payout';
+
     // Type constants
     public const TYPE_DEBIT = 'debit';
 

@@ -1,5 +1,13 @@
 <?php
 
+use App\Http\Controllers\Api\Admin\AuditLogController;
+use App\Http\Controllers\Api\Admin\CommissionController;
+use App\Http\Controllers\Api\Admin\RestaurantApprovalController;
+use App\Http\Controllers\Api\Admin\RiderApprovalController;
+use App\Http\Controllers\Api\Admin\SettingsController;
+use App\Http\Controllers\Api\Admin\SettlementController;
+use App\Http\Controllers\Api\Admin\StatsController;
+use App\Http\Controllers\Api\Admin\UserManagementController;
 use App\Http\Controllers\Api\Customer\CustomerAddressController;
 use App\Http\Controllers\Api\Marketplace\CartController;
 use App\Http\Controllers\Api\Marketplace\MarketplaceController;
@@ -8,7 +16,9 @@ use App\Http\Controllers\Api\Order\OrderController;
 use App\Http\Controllers\Api\Order\OrderTrackingController;
 use App\Http\Controllers\Api\Payment\PaymentController;
 use App\Http\Controllers\Api\Payment\TapPaymentsWebhookController;
+use App\Http\Controllers\Api\Restaurant\ReportsController as RestaurantReportsController;
 use App\Http\Controllers\Api\Restaurant\RestaurantStorefrontController;
+use App\Http\Controllers\Api\Rider\ReportsController as RiderReportsController;
 use App\Http\Controllers\Api\Rider\RiderController;
 use Illuminate\Support\Facades\Route;
 
@@ -59,6 +69,34 @@ Route::middleware('auth:sanctum')->prefix('rider')->name('rider.')->group(functi
     Route::get('/assignments', [RiderController::class, 'assignments'])->name('assignments');
     Route::post('/assignments/{assignment}/accept', [RiderController::class, 'accept'])->name('assignments.accept');
     Route::post('/assignments/{assignment}/reject', [RiderController::class, 'reject'])->name('assignments.reject');
+    Route::get('/reports/earnings', [RiderReportsController::class, 'earnings'])->name('reports.earnings');
+    Route::get('/reports/deliveries', [RiderReportsController::class, 'deliveries'])->name('reports.deliveries');
+});
+
+// Protected Restaurant reporting routes
+Route::middleware(['auth:sanctum', 'role:restaurant'])->prefix('restaurant')->name('restaurant.')->group(function () {
+    Route::get('/reports/sales', [RestaurantReportsController::class, 'sales'])->name('reports.sales');
+    Route::get('/settlements', [SettlementController::class, 'own'])->name('settlements.own');
+});
+
+// Super Admin API routes (require authentication + super_admin role)
+Route::middleware(['auth:sanctum', 'role:super_admin'])->prefix('admin')->name('admin.')->group(function () {
+    Route::get('/stats', [StatsController::class, 'index'])->name('stats');
+    Route::get('/users', [UserManagementController::class, 'index'])->name('users.index');
+    Route::patch('/users/{user}/role', [UserManagementController::class, 'updateRole'])->name('users.role');
+    Route::get('/restaurants', [RestaurantApprovalController::class, 'index'])->name('restaurants.index');
+    Route::get('/restaurants/pending', [RestaurantApprovalController::class, 'pending'])->name('restaurants.pending');
+    Route::patch('/restaurants/{restaurant}/approval', [RestaurantApprovalController::class, 'updateApproval'])->name('restaurants.approval');
+    Route::get('/riders', [RiderApprovalController::class, 'index'])->name('riders.index');
+    Route::patch('/riders/{rider}/approval', [RiderApprovalController::class, 'updateApproval'])->name('riders.approval');
+    Route::get('/commissions', [CommissionController::class, 'index'])->name('commissions.index');
+    Route::put('/restaurants/{restaurant}/commission', [CommissionController::class, 'upsert'])->name('commissions.upsert');
+    Route::get('/settings', [SettingsController::class, 'index'])->name('settings.index');
+    Route::put('/settings', [SettingsController::class, 'update'])->name('settings.update');
+    Route::get('/settlements', [SettlementController::class, 'index'])->name('settlements.index');
+    Route::post('/settlements/generate', [SettlementController::class, 'generate'])->name('settlements.generate');
+    Route::post('/settlements/{settlement}/pay', [SettlementController::class, 'pay'])->name('settlements.pay');
+    Route::get('/audit-logs', [AuditLogController::class, 'index'])->name('audit-logs');
 });
 
 // Payment routes (require authentication)
@@ -71,5 +109,3 @@ Route::middleware('auth:sanctum')->prefix('payments')->name('payments.')->group(
 // Tap Payments webhook (public, signature-validated)
 Route::post('/payments/tap/webhook', [TapPaymentsWebhookController::class, 'handle'])->name('payments.tap.webhook');
 Route::get('/payments/tap/return', [TapPaymentsWebhookController::class, 'return'])->name('payments.tap.return');
-
-// Future: Protected customer/restaurant/rider/admin API routes will go here
