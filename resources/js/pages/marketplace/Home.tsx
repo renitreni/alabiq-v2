@@ -1,5 +1,11 @@
 import { GuestLayout } from '@/components/layout/GuestLayout';
 import Button from '@/components/ui/Button';
+import { usePage } from '@inertiajs/react';
+
+type AuthUser = {
+    id: number;
+    name: string;
+};
 
 const heroBackground = {
     backgroundImage: 'url(/courier-v1.0.0/build/assets/img/gallery/hero-header-bg.png)',
@@ -13,6 +19,10 @@ const heroBackground = {
  * straight to the restaurant storefront.
  */
 export default function Home() {
+    const { auth } = usePage().props as unknown as {
+        auth: { user: AuthUser | null };
+    };
+
     return (
         <GuestLayout
             title="Alabiq - Order Food Online"
@@ -32,10 +42,12 @@ export default function Home() {
                                 This restaurant is being set up on Alabiq. Check back soon to browse the menu and order for
                                 delivery or pickup.
                             </p>
-                            <div className="d-flex gap-3 justify-content-center justify-content-lg-start">
-                                <Button variant="primary" size="lg" as="a" href="/login">Log In</Button>
-                                <Button variant="outline" size="lg" as="a" href="/register">Create an Account</Button>
-                            </div>
+                            {auth.user === null && (
+                                <div className="d-flex gap-3 justify-content-center justify-content-lg-start">
+                                    <Button variant="primary" size="lg" as="a" href="/login">Log In</Button>
+                                    <Button variant="outline" size="lg" as="a" href="/register">Create an Account</Button>
+                                </div>
+                            )}
                         </div>
                         <div className="col-lg-6 col-xl-7 d-none d-lg-block text-end">
                             <img

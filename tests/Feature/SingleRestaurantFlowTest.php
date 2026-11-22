@@ -53,6 +53,25 @@ class SingleRestaurantFlowTest extends TestCase
         $this->get('/')->assertOk();
     }
 
+    public function test_home_shows_login_buttons_for_guests(): void
+    {
+        $this->get('/')
+            ->assertInertia(fn ($page) => $page
+                ->component('marketplace/Home')
+                ->where('auth.user', null));
+    }
+
+    public function test_home_hides_login_buttons_for_authenticated_users(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)
+            ->get('/')
+            ->assertInertia(fn ($page) => $page
+                ->component('marketplace/Home')
+                ->where('auth.user.id', $user->id));
+    }
+
     public function test_restaurant_user_without_restaurant_is_redirected_to_setup(): void
     {
         $user = User::factory()->role(User::ROLE_RESTAURANT)->create();
