@@ -88,7 +88,7 @@ Route::middleware(['auth', 'verified', 'role:restaurant'])->prefix('restaurant')
     Route::middleware('restaurant.onboarded')->group(function () {
         Route::get('/dashboard', fn () => Inertia::render('restaurant/Dashboard'))->name('dashboard');
         Route::get('/orders', fn () => Inertia::render('restaurant/Orders'))->name('orders');
-        Route::get('/orders/{order}', fn () => Inertia::render('restaurant/OrderShow'))->name('orders.show');
+        Route::get('/orders/{order}', fn () => Inertia::render('restaurant/OrderShow'))->name('order.show');
         Route::get('/menu', fn () => Inertia::render('restaurant/Menu'))->name('menu');
         Route::get('/menu/create', fn () => Inertia::render('restaurant/MenuCreate'))->name('menu.create');
         Route::get('/menu/{menuItem}/edit', fn () => Inertia::render('restaurant/MenuEdit'))->name('menu.edit');
