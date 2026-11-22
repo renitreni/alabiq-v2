@@ -56,7 +56,9 @@ echo "  restored production customizations from $B"
 # PHP dependencies (production, optimized)
 # NOTE: server runs PHP 8.3 while local composer.lock may require PHP 8.4+,
 # so use `composer update --no-dev` (not install) to regenerate a compatible lock.
-composer update --no-dev --optimize-autoloader --no-interaction --prefer-dist
+# NOTE: --no-scripts is required because proc_open is disabled on this shared host,
+# which makes @php artisan package:discover (in post-autoload-dump) fail.
+composer update --no-dev --no-scripts --optimize-autoloader --no-interaction --prefer-dist
 
 # Migration reconciliation: mark migrations whose tables already exist (from a
 # previous/older schema on this shared host) so migrate only creates new tables.
