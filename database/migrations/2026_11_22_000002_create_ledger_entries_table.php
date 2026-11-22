@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('ledger_entries', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('order_id')->constrained('orders')->cascadeOnDelete();
+            $table->unsignedBigInteger('order_id');
             $table->foreignId('payment_transaction_id')->nullable()->constrained('payment_transactions')->nullOnDelete();
             $table->string('account'); // platform_commission, restaurant_revenue, delivery_fee, refund
             $table->string('type'); // debit, credit

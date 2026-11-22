@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('payment_transactions', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('order_id')->constrained('orders')->cascadeOnDelete();
+            $table->unsignedBigInteger('order_id');
             $table->string('gateway'); // cash_on_delivery, tap_payments
             $table->string('gateway_transaction_id')->nullable();
             $table->string('idempotency_key')->unique();

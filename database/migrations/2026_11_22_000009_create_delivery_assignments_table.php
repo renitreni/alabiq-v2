@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('delivery_assignments', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('order_id')->constrained()->cascadeOnDelete();
+            $table->unsignedBigInteger('order_id');
             $table->foreignId('rider_id')->constrained()->cascadeOnDelete();
             $table->string('status')->default('assigned'); // assigned, accepted, rejected, completed, cancelled
             $table->decimal('distance_km', 8, 2)->nullable();

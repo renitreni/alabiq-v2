@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('menu_item_options', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('menu_item_id')->constrained()->cascadeOnDelete();
+            $table->unsignedBigInteger('menu_item_id');
             $table->string('name'); // e.g., "Size", "Add-ons", "Crust Type"
             $table->string('type')->default('select'); // select, radio, checkbox, multi_select
             $table->boolean('is_required')->default(false);

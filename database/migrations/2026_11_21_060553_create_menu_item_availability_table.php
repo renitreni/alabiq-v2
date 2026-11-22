@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('menu_item_availabilities', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('menu_item_id')->constrained()->cascadeOnDelete();
+            $table->unsignedBigInteger('menu_item_id');
             $table->foreignId('restaurant_branch_id')->constrained()->cascadeOnDelete();
             $table->boolean('is_available')->default(true);
             $table->decimal('price_override', 8, 2)->nullable();

@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('delivery_tracking_events', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('order_id')->constrained()->cascadeOnDelete();
+            $table->unsignedBigInteger('order_id');
             $table->foreignId('rider_id')->nullable()->constrained()->nullOnDelete();
             $table->string('event'); // assigned, accepted, picked_up, on_the_way, delivered, location
             $table->decimal('latitude', 10, 8)->nullable();

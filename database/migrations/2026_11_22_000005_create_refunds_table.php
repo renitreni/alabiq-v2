@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('refunds', function (Blueprint $table) {
             $table->id();
             $table->foreignId('payment_transaction_id')->constrained('payment_transactions')->cascadeOnDelete();
-            $table->foreignId('order_id')->constrained('orders')->cascadeOnDelete();
+            $table->unsignedBigInteger('order_id');
             $table->decimal('amount', 10, 2);
             $table->string('currency', 3)->default('SAR');
             $table->string('reason')->nullable();
