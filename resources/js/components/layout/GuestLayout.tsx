@@ -32,12 +32,6 @@ export const GuestLayout: React.FC<GuestLayoutProps> = ({
                         { label: 'How it Works', href: '/how-it-works' },
                         { label: 'About', href: '/about' },
                     ]}
-                    userMenu={
-                        <div className="d-flex align-items-center gap-2">
-                            <a href="/login" className="btn btn-outline-danger btn-sm">Log In</a>
-                            <a href="/register" className="btn btn-danger btn-sm">Sign Up</a>
-                        </div>
-                    }
                 />
 
                 <main className="flex-1">{children}</main>
