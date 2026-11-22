@@ -3,6 +3,17 @@
 return [
     /*
     |--------------------------------------------------------------------------
+    | Single Restaurant
+    |--------------------------------------------------------------------------
+    |
+    | One deployment serves exactly one restaurant. Pin it here when the
+    | database may hold more than one record; when empty, the first
+    | restaurant on record is treated as the deployment's restaurant.
+    */
+    'restaurant_id' => env('ALABIQ_RESTAURANT_ID'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Currency
     |--------------------------------------------------------------------------
     */

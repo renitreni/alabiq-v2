@@ -1,8 +1,6 @@
 <?php
 
 use App\Http\Controllers\Api\Admin\AuditLogController;
-use App\Http\Controllers\Api\Admin\CommissionController;
-use App\Http\Controllers\Api\Admin\RestaurantApprovalController;
 use App\Http\Controllers\Api\Admin\RiderApprovalController;
 use App\Http\Controllers\Api\Admin\SettingsController;
 use App\Http\Controllers\Api\Admin\SettlementController;
@@ -10,27 +8,22 @@ use App\Http\Controllers\Api\Admin\StatsController;
 use App\Http\Controllers\Api\Admin\UserManagementController;
 use App\Http\Controllers\Api\Customer\CustomerAddressController;
 use App\Http\Controllers\Api\Marketplace\CartController;
-use App\Http\Controllers\Api\Marketplace\MarketplaceController;
 use App\Http\Controllers\Api\Order\DispatchController;
 use App\Http\Controllers\Api\Order\OrderController;
 use App\Http\Controllers\Api\Order\OrderTrackingController;
 use App\Http\Controllers\Api\Payment\PaymentController;
 use App\Http\Controllers\Api\Payment\TapPaymentsWebhookController;
 use App\Http\Controllers\Api\Restaurant\ReportsController as RestaurantReportsController;
+use App\Http\Controllers\Api\Restaurant\RestaurantMenuController;
+use App\Http\Controllers\Api\Restaurant\RestaurantOrderController;
 use App\Http\Controllers\Api\Restaurant\RestaurantStorefrontController;
 use App\Http\Controllers\Api\Rider\ReportsController as RiderReportsController;
 use App\Http\Controllers\Api\Rider\RiderController;
 use Illuminate\Support\Facades\Route;
 
-// Public Marketplace API routes
+// Public storefront API — one deployment serves one restaurant, so there is
+// no restaurant directory/search; guests go straight to the storefront.
 Route::prefix('marketplace')->name('marketplace.')->group(function () {
-    Route::get('/restaurants', [MarketplaceController::class, 'search'])->name('restaurants.search');
-    Route::get('/restaurants/featured', [MarketplaceController::class, 'featured'])->name('restaurants.featured');
-    Route::get('/restaurants/nearby', [MarketplaceController::class, 'nearby'])->name('restaurants.nearby');
-    Route::get('/cuisines', [MarketplaceController::class, 'cuisines'])->name('cuisines');
-    Route::get('/popular-items', [MarketplaceController::class, 'popularItems'])->name('popular-items');
-
-    // Restaurant storefront
     Route::get('/restaurants/{slug}', [RestaurantStorefrontController::class, 'show'])->name('restaurants.show');
     Route::post('/restaurants/{slug}/check-coverage', [RestaurantStorefrontController::class, 'checkCoverage'])->name('restaurants.check-coverage');
 
@@ -75,6 +68,14 @@ Route::middleware('auth:sanctum')->prefix('rider')->name('rider.')->group(functi
 
 // Protected Restaurant reporting routes
 Route::middleware(['auth:sanctum', 'role:restaurant'])->prefix('restaurant')->name('restaurant.')->group(function () {
+    Route::get('/orders', [RestaurantOrderController::class, 'index'])->name('orders.index');
+    Route::get('/orders/{order}', [RestaurantOrderController::class, 'show'])->name('orders.show');
+    Route::get('/orders/{order}/available-riders', [RestaurantOrderController::class, 'availableRiders'])->name('orders.available-riders');
+    Route::get('/menu', [RestaurantMenuController::class, 'index'])->name('menu.index');
+    Route::post('/menu', [RestaurantMenuController::class, 'store'])->name('menu.store');
+    Route::get('/menu/{menuItem}', [RestaurantMenuController::class, 'show'])->name('menu.show');
+    Route::put('/menu/{menuItem}', [RestaurantMenuController::class, 'update'])->name('menu.update');
+    Route::delete('/menu/{menuItem}', [RestaurantMenuController::class, 'destroy'])->name('menu.destroy');
     Route::get('/reports/sales', [RestaurantReportsController::class, 'sales'])->name('reports.sales');
     Route::get('/settlements', [SettlementController::class, 'own'])->name('settlements.own');
 });
@@ -84,13 +85,8 @@ Route::middleware(['auth:sanctum', 'role:super_admin'])->prefix('admin')->name('
     Route::get('/stats', [StatsController::class, 'index'])->name('stats');
     Route::get('/users', [UserManagementController::class, 'index'])->name('users.index');
     Route::patch('/users/{user}/role', [UserManagementController::class, 'updateRole'])->name('users.role');
-    Route::get('/restaurants', [RestaurantApprovalController::class, 'index'])->name('restaurants.index');
-    Route::get('/restaurants/pending', [RestaurantApprovalController::class, 'pending'])->name('restaurants.pending');
-    Route::patch('/restaurants/{restaurant}/approval', [RestaurantApprovalController::class, 'updateApproval'])->name('restaurants.approval');
     Route::get('/riders', [RiderApprovalController::class, 'index'])->name('riders.index');
     Route::patch('/riders/{rider}/approval', [RiderApprovalController::class, 'updateApproval'])->name('riders.approval');
-    Route::get('/commissions', [CommissionController::class, 'index'])->name('commissions.index');
-    Route::put('/restaurants/{restaurant}/commission', [CommissionController::class, 'upsert'])->name('commissions.upsert');
     Route::get('/settings', [SettingsController::class, 'index'])->name('settings.index');
     Route::put('/settings', [SettingsController::class, 'update'])->name('settings.update');
     Route::get('/settlements', [SettlementController::class, 'index'])->name('settlements.index');

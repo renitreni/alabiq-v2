@@ -1,5 +1,12 @@
 <?php
 
+use App\Http\Controllers\Auth\AuthenticatedSessionController;
+use App\Http\Controllers\Auth\NewPasswordController;
+use App\Http\Controllers\Auth\PasswordResetLinkController;
+use App\Http\Controllers\Auth\RegisteredUserController;
+use App\Http\Controllers\Restaurant\RestaurantSetupController;
+use App\Models\Restaurant;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -14,17 +21,45 @@ use Inertia\Inertia;
 |
 */
 
-// Public marketplace routes
-Route::get('/', fn () => Inertia::render('marketplace/Home'))->name('home');
-Route::get('/restaurants', fn () => Inertia::render('marketplace/Search'))->name('restaurants.index');
-Route::get('/restaurants/{slug}', fn () => Inertia::render('marketplace/RestaurantShow'))->name('restaurants.show');
-Route::get('/search', fn () => Inertia::render('marketplace/Search'))->name('search');
+// Public storefront — one deployment serves one restaurant, so guests land
+// directly on its menu instead of a restaurant directory.
+Route::get('/', function () {
+    $restaurant = Restaurant::single();
 
-// Auth routes (will be handled by Laravel Breeze or custom)
-Route::get('/login', fn () => Inertia::render('auth/Login'))->name('login');
-Route::get('/register', fn () => Inertia::render('auth/Register'))->name('register');
-Route::get('/forgot-password', fn () => Inertia::render('auth/ForgotPassword'))->name('password.request');
-Route::get('/reset-password/{token}', fn () => Inertia::render('auth/ResetPassword'))->name('password.reset');
+    if ($restaurant) {
+        return redirect()->route('restaurants.show', ['slug' => $restaurant->slug]);
+    }
+
+    return Inertia::render('marketplace/Home');
+})->name('home');
+
+Route::get('/restaurants', function () {
+    $restaurant = Restaurant::single();
+
+    if ($restaurant) {
+        return redirect()->route('restaurants.show', ['slug' => $restaurant->slug]);
+    }
+
+    return redirect('/');
+})->name('restaurants.index');
+
+Route::get('/restaurants/{slug}', fn () => Inertia::render('marketplace/RestaurantShow'))->name('restaurants.show');
+
+Route::get('/search', fn () => redirect('/'))->name('search');
+
+// Auth routes
+Route::get('/login', [AuthenticatedSessionController::class, 'create'])->middleware('guest')->name('login');
+Route::post('/login', [AuthenticatedSessionController::class, 'store'])->middleware('guest')->name('login.store');
+Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])->middleware('auth')->name('logout');
+Route::get('/register', fn () => Inertia::render('auth/Register'))->middleware('guest')->name('register');
+Route::post('/register', [RegisteredUserController::class, 'store'])->middleware('guest');
+Route::get('/forgot-password', fn () => Inertia::render('auth/ForgotPassword'))->middleware('guest')->name('password.request');
+Route::post('/forgot-password', [PasswordResetLinkController::class, 'store'])->middleware('guest')->name('password.email');
+Route::get('/reset-password/{token}', fn (Request $request) => Inertia::render('auth/ResetPassword', [
+    'token' => $request->route('token'),
+    'email' => $request->input('email'),
+]))->middleware('guest')->name('password.reset');
+Route::post('/reset-password', [NewPasswordController::class, 'store'])->middleware('guest')->name('password.update');
 
 // Guest pages
 Route::get('/how-it-works', fn () => Inertia::render('shared/HowItWorks'))->name('how-it-works');
@@ -46,14 +81,20 @@ Route::middleware(['auth', 'verified', 'role:customer'])->prefix('customer')->na
 
 // Restaurant dashboard routes (protected by auth + restaurant role)
 Route::middleware(['auth', 'verified', 'role:restaurant'])->prefix('restaurant')->name('restaurant.')->group(function () {
-    Route::get('/dashboard', fn () => Inertia::render('restaurant/Dashboard'))->name('dashboard');
-    Route::get('/orders', fn () => Inertia::render('restaurant/Orders'))->name('orders');
-    Route::get('/orders/{order}', fn () => Inertia::render('restaurant/OrderShow'))->name('orders.show');
-    Route::get('/menu', fn () => Inertia::render('restaurant/Menu'))->name('menu');
-    Route::get('/menu/create', fn () => Inertia::render('restaurant/MenuCreate'))->name('menu.create');
-    Route::get('/menu/{menuItem}/edit', fn () => Inertia::render('restaurant/MenuEdit'))->name('menu.edit');
-    Route::get('/profile', fn () => Inertia::render('restaurant/Profile'))->name('profile');
-    Route::get('/settings', fn () => Inertia::render('restaurant/Settings'))->name('settings');
+    // One-time onboarding: create the single restaurant this system serves.
+    Route::get('/setup', [RestaurantSetupController::class, 'create'])->name('setup');
+    Route::post('/setup', [RestaurantSetupController::class, 'store'])->name('setup.store');
+
+    Route::middleware('restaurant.onboarded')->group(function () {
+        Route::get('/dashboard', fn () => Inertia::render('restaurant/Dashboard'))->name('dashboard');
+        Route::get('/orders', fn () => Inertia::render('restaurant/Orders'))->name('orders');
+        Route::get('/orders/{order}', fn () => Inertia::render('restaurant/OrderShow'))->name('orders.show');
+        Route::get('/menu', fn () => Inertia::render('restaurant/Menu'))->name('menu');
+        Route::get('/menu/create', fn () => Inertia::render('restaurant/MenuCreate'))->name('menu.create');
+        Route::get('/menu/{menuItem}/edit', fn () => Inertia::render('restaurant/MenuEdit'))->name('menu.edit');
+        Route::get('/profile', fn () => Inertia::render('restaurant/Profile'))->name('profile');
+        Route::get('/settings', fn () => Inertia::render('restaurant/Settings'))->name('settings');
+    });
 });
 
 // Rider dashboard routes (protected by auth + rider role)
@@ -69,8 +110,6 @@ Route::middleware(['auth', 'verified', 'role:rider'])->prefix('rider')->name('ri
 // Super Admin dashboard routes (protected by auth + super_admin role)
 Route::middleware(['auth', 'verified', 'role:super_admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/dashboard', fn () => Inertia::render('admin/Dashboard'))->name('dashboard');
-    Route::get('/restaurants', fn () => Inertia::render('admin/Restaurants'))->name('restaurants');
-    Route::get('/restaurants/{restaurant}', fn () => Inertia::render('admin/RestaurantShow'))->name('restaurants.show');
     Route::get('/riders', fn () => Inertia::render('admin/Riders'))->name('riders');
     Route::get('/riders/{rider}', fn () => Inertia::render('admin/RiderShow'))->name('riders.show');
     Route::get('/reports', fn () => Inertia::render('admin/Reports'))->name('reports');

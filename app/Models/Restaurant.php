@@ -84,6 +84,23 @@ class Restaurant extends Model
         return $this->hasMany(RestaurantBranch::class)->where('is_active', true)->where('accepts_orders', true);
     }
 
+    /**
+     * Resolve the restaurant this deployment serves.
+     *
+     * Pinned via ALABIQ_RESTAURANT_ID; otherwise the first restaurant on
+     * record is the deployment's single restaurant.
+     */
+    public static function single(): ?self
+    {
+        $id = config('alabiq.restaurant_id');
+
+        if ($id) {
+            return static::find($id);
+        }
+
+        return static::query()->first();
+    }
+
     public function menuCategories(): HasMany
     {
         return $this->hasMany(MenuCategory::class);

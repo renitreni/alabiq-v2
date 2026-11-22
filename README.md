@@ -19,6 +19,15 @@
 
 Do not introduce Tailwind or a separate Bootstrap theme. Build UI with Courier/Bootstrap utility classes (`bg-100`, `bg-900`, `text-primary`, `btn-danger`, `card-span`, etc.) and keep Alabiq branding assets in `public/images/`.
 
+## Product Model: One System, One Restaurant
+
+Each Alabiq deployment serves exactly **one** restaurant — there is no restaurant directory, search, or post-login restaurant picker:
+
+- Guests and customers land directly on the restaurant's storefront/menu (`/` redirects to `/restaurants/{slug}`).
+- Restaurant owners log in straight into their dashboard. On first login they complete a one-time setup (`/restaurant/setup`) that creates the deployment's single restaurant; until then all restaurant dashboard pages redirect to setup.
+- Public registration offers customer and rider accounts only. Restaurant owner accounts are provisioned by the deployer (super admin user management or seeders) — there is no self-serve restaurant signup, and no super-admin restaurant approval flow.
+- If the database may ever hold more than one restaurant record, pin the deployment's restaurant with `ALABIQ_RESTAURANT_ID` in `.env` (see `Restaurant::single()`).
+
 ## About Laravel
 
 Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:

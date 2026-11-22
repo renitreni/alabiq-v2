@@ -5,7 +5,6 @@ namespace Tests\Feature\Api;
 use App\Models\AuditLog;
 use App\Models\DeliveryAssignment;
 use App\Models\Order;
-use App\Models\PlatformCommission;
 use App\Models\Restaurant;
 use App\Models\RestaurantSettlement;
 use App\Models\Rider;
@@ -77,23 +76,6 @@ class AdminApiTest extends TestCase
         $this->patchJson("/api/admin/users/{$target->id}/role", ['role' => 'wizard'])->assertUnprocessable();
     }
 
-    public function test_restaurant_approval_flow(): void
-    {
-        Sanctum::actingAs($this->admin);
-        $restaurant = Restaurant::factory()->create(['is_approved' => false]);
-
-        $this->getJson('/api/admin/restaurants/pending')
-            ->assertOk()
-            ->assertJsonFragment(['id' => $restaurant->id]);
-
-        $this->patchJson("/api/admin/restaurants/{$restaurant->id}/approval", ['is_approved' => true])
-            ->assertOk()
-            ->assertJsonPath('data.is_approved', true);
-
-        $this->assertNotNull($restaurant->fresh()->approved_at);
-        $this->assertDatabaseHas('audit_logs', ['action' => 'restaurant.approval_updated']);
-    }
-
     public function test_rider_activation_toggle(): void
     {
         Sanctum::actingAs($this->admin);
@@ -104,23 +86,6 @@ class AdminApiTest extends TestCase
             ->assertJsonPath('data.is_active', false);
 
         $this->assertDatabaseHas('audit_logs', ['action' => 'rider.activation_updated']);
-    }
-
-    public function test_commission_override_upsert(): void
-    {
-        Sanctum::actingAs($this->admin);
-        $restaurant = Restaurant::factory()->create();
-
-        $this->putJson("/api/admin/restaurants/{$restaurant->id}/commission", ['rate' => 22.5])
-            ->assertOk()
-            ->assertJsonPath('data.rate', '22.50');
-
-        // Second upsert updates the same row.
-        $this->putJson("/api/admin/restaurants/{$restaurant->id}/commission", ['rate' => 18])
-            ->assertOk();
-
-        $this->assertSame(1, PlatformCommission::count());
-        $this->assertDatabaseHas('audit_logs', ['action' => 'commission.updated']);
     }
 
     public function test_settings_update_flow(): void

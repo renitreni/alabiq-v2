@@ -10,8 +10,8 @@ interface GuestLayoutProps {
 
 export const GuestLayout: React.FC<GuestLayoutProps> = ({
     children,
-    title = 'Alabiq - Multi-Restaurant Food Delivery Marketplace',
-    description = 'Discover the best restaurants near you. Order food online for delivery or pickup.',
+    title = 'Alabiq - Order Food Online',
+    description = 'Order your favorite food online for delivery or pickup.',
 }) => {
     return (
         <>
@@ -28,7 +28,7 @@ export const GuestLayout: React.FC<GuestLayoutProps> = ({
                     logo="/images/alabiq-logo-full.png"
                     logoAlt="Alabiq"
                     links={[
-                        { label: 'Restaurants', href: '/restaurants' },
+                        { label: 'Menu', href: '/' },
                         { label: 'How it Works', href: '/how-it-works' },
                         { label: 'About', href: '/about' },
                     ]}

@@ -2,11 +2,7 @@
 
 namespace App\Services;
 
-use App\Models\Cuisine;
-use App\Models\MenuItem;
 use App\Models\Restaurant;
-use Illuminate\Pagination\LengthAwarePaginator;
-use Illuminate\Support\Collection;
 
 class MarketplaceService
 {
@@ -21,57 +17,6 @@ class MarketplaceService
     private function coverage(): CoverageService
     {
         return $this->coverageService ??= new CoverageService;
-    }
-
-    public function searchRestaurants(array $filters = [], int $perPage = 12): LengthAwarePaginator
-    {
-        $query = Restaurant::query()
-            ->active()
-            ->approved()
-            ->acceptingOrders()
-            ->with(['cuisines', 'activeBranches.deliveryZones', 'menuItems.category'])
-            ->withCount(['menuItems as items_count' => fn ($q) => $q->available()]);
-
-        if (! empty($filters['keyword'])) {
-            $keyword = $filters['keyword'];
-            $query->where(function ($q) use ($keyword) {
-                $q->where('name', 'like', "%{$keyword}%")
-                    ->orWhere('description', 'like', "%{$keyword}%")
-                    ->orWhereHas('cuisines', fn ($cq) => $cq->where('name', 'like', "%{$keyword}%"));
-            });
-        }
-
-        if (! empty($filters['cuisine_id'])) {
-            $query->whereHas('cuisines', fn ($q) => $q->where('cuisines.id', $filters['cuisine_id']));
-        }
-
-        if (! empty($filters['city'])) {
-            $query->inCity($filters['city']);
-        }
-
-        if (isset($filters['max_delivery_fee']) && is_numeric($filters['max_delivery_fee'])) {
-            $query->whereHas('activeBranches', fn ($q) => $q->where('delivery_fee', '<=', $filters['max_delivery_fee']));
-        }
-
-        $sortBy = $filters['sort_by'] ?? 'relevance';
-        switch ($sortBy) {
-            case 'rating':
-                $query->orderByDesc('created_at');
-                break;
-            case 'delivery_time':
-                $query->whereHas('activeBranches', fn ($q) => $q->orderBy('estimated_delivery_time'));
-                break;
-            case 'delivery_fee':
-                $query->whereHas('activeBranches', fn ($q) => $q->orderBy('delivery_fee'));
-                break;
-            case 'newest':
-                $query->orderByDesc('created_at');
-                break;
-            default:
-                $query->orderByDesc('created_at');
-        }
-
-        return $query->paginate($perPage)->withQueryString();
     }
 
     public function getRestaurantWithMenu(string $slug, ?int $branchId = null): ?array
@@ -161,34 +106,6 @@ class MarketplaceService
         ];
     }
 
-    public function getFeaturedRestaurants(int $limit = 8): Collection
-    {
-        return Restaurant::query()
-            ->active()
-            ->approved()
-            ->acceptingOrders()
-            ->with(['cuisines', 'activeBranches'])
-            ->inRandomOrder()
-            ->limit($limit)
-            ->get();
-    }
-
-    public function getPopularItems(int $limit = 10): Collection
-    {
-        return MenuItem::query()
-            ->available()
-            ->popular()
-            ->with(['restaurant.cuisines', 'category', 'options.values'])
-            ->inRandomOrder()
-            ->limit($limit)
-            ->get();
-    }
-
-    public function getAllCuisines(): Collection
-    {
-        return Cuisine::active()->get(['id', 'name', 'slug', 'icon', 'image']);
-    }
-
     /**
      * Delivery coverage check — delegates to CoverageService.
      *
@@ -197,23 +114,5 @@ class MarketplaceService
     public function checkDeliveryCoverage(int $branchId, float $latitude, float $longitude): array
     {
         return $this->coverage()->checkCoverage($branchId, $latitude, $longitude);
-    }
-
-    public function getNearbyRestaurants(float $latitude, float $longitude, int $radiusKm = 10, int $limit = 10): Collection
-    {
-        $latRange = $radiusKm / 111.0;
-        $lngRange = $radiusKm / (111.0 * cos(deg2rad($latitude)));
-
-        return Restaurant::query()
-            ->active()
-            ->approved()
-            ->acceptingOrders()
-            ->whereHas('activeBranches', function ($q) use ($latitude, $longitude, $latRange, $lngRange) {
-                $q->whereBetween('latitude', [$latitude - $latRange, $latitude + $latRange])
-                    ->whereBetween('longitude', [$longitude - $lngRange, $longitude + $lngRange]);
-            })
-            ->with(['cuisines', 'activeBranches'])
-            ->limit($limit)
-            ->get();
     }
 }

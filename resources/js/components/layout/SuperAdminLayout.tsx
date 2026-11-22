@@ -5,7 +5,7 @@ import { Navbar } from '@/components/ui/Navbar';
 interface SuperAdminLayoutProps {
     children: React.ReactNode;
     title?: string;
-    admin?: { name: string; avatar?: string };
+    admin?: { name: string; avatar?: string } | null;
 }
 
 export const SuperAdminLayout: React.FC<SuperAdminLayoutProps> = ({
@@ -30,7 +30,6 @@ export const SuperAdminLayout: React.FC<SuperAdminLayoutProps> = ({
                     logoAlt="Alabiq Admin"
                     links={[
                         { label: 'Dashboard', href: '/admin/dashboard' },
-                        { label: 'Restaurants', href: '/admin/restaurants' },
                         { label: 'Riders', href: '/admin/riders' },
                         { label: 'Reports', href: '/admin/reports' },
                         { label: 'Settings', href: '/admin/settings' },

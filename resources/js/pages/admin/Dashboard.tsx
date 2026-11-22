@@ -6,7 +6,6 @@ import api from '@/lib/axios';
 
 interface Stats {
     users?: { total: number; by_role: Record<string, number> };
-    restaurants?: { total: number; pending_approval: number; active: number };
     riders?: { total: number; online: number; delivering_now: number };
     orders?: { total: number; today: number; active: number; delivered: number };
     gmv?: { delivered_total: number; refunded_total: number };
@@ -47,7 +46,6 @@ export default function Dashboard() {
 
                 <div className="row g-3">
                     <div className="col-6 col-md-3"><StatCard label="Total Users" value={stats.users?.total ?? 0} /></div>
-                    <div className="col-6 col-md-3"><StatCard label="Restaurants" value={stats.restaurants?.total ?? 0} hint={`${stats.restaurants?.pending_approval ?? 0} pending approval`} /></div>
                     <div className="col-6 col-md-3"><StatCard label="Riders Online" value={stats.riders?.online ?? 0} hint={`${stats.riders?.total ?? 0} total`} /></div>
                     <div className="col-6 col-md-3"><StatCard label="Active Orders" value={stats.orders?.active ?? 0} hint={`${stats.orders?.today ?? 0} today`} /></div>
                     <div className="col-6 col-md-3"><StatCard label="Delivered Orders" value={stats.orders?.delivered ?? 0} /></div>
@@ -83,7 +81,6 @@ export default function Dashboard() {
                             <CardBody className="p-4">
                                 <h6 className="fw-bold">Quick Actions</h6>
                                 <div className="list-group list-group-flush">
-                                    <a href="/admin/restaurants" className="list-group-item list-group-item-action px-0">Review pending restaurant approvals</a>
                                     <a href="/admin/reports" className="list-group-item list-group-item-action px-0">Manage settlements &amp; payouts</a>
                                     <a href="/admin/users" className="list-group-item list-group-item-action px-0">Manage users &amp; roles</a>
                                     <a href="/admin/settings" className="list-group-item list-group-item-action px-0">Platform settings</a>
