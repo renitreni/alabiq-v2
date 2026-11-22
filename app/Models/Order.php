@@ -161,6 +161,14 @@ class Order extends Model
         return $this->hasOne(DeliveryAssignment::class);
     }
 
+    /**
+     * All delivery attempts, including rejected ones (re-dispatch history).
+     */
+    public function assignments(): HasMany
+    {
+        return $this->hasMany(DeliveryAssignment::class)->orderByDesc('offered_at')->orderByDesc('id');
+    }
+
     public function ledgerEntries(): HasMany
     {
         return $this->hasMany(LedgerEntry::class);

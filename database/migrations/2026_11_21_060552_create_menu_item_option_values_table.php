@@ -22,7 +22,7 @@ return new class extends Migration
             $table->json('metadata')->nullable(); // e.g., { "calories": 100, "allergens": ["nuts"] }
             $table->timestamps();
 
-            $table->index(['menu_item_option_id', 'is_active', 'sort_order']);
+            $table->index(['menu_item_option_id', 'is_active', 'sort_order'], 'option_values_option_active_sort_idx');
         });
     }
 

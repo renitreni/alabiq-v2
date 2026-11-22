@@ -5,7 +5,7 @@ import { Navbar } from '@/components/ui/Navbar';
 interface RestaurantLayoutProps {
     children: React.ReactNode;
     title?: string;
-    restaurant?: { name: string; logo?: string };
+    restaurant?: { name: string; logo?: string } | null;
 }
 
 export const RestaurantLayout: React.FC<RestaurantLayoutProps> = ({

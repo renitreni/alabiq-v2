@@ -27,7 +27,7 @@ return new class extends Migration
             $table->boolean('track_stock')->default(false);
             $table->timestamps();
 
-            $table->unique(['menu_item_id', 'restaurant_branch_id']);
+            $table->unique(['menu_item_id', 'restaurant_branch_id'], 'menu_item_availabilities_item_branch_unique');
             $table->index(['restaurant_branch_id', 'is_available']);
             $table->index(['menu_item_id', 'is_available']);
         });

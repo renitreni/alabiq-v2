@@ -5,7 +5,7 @@ import { Navbar } from '@/components/ui/Navbar';
 interface CustomerLayoutProps {
     children: React.ReactNode;
     title?: string;
-    user?: { name: string; avatar?: string };
+    user?: { name: string; avatar?: string } | null;
 }
 
 export const CustomerLayout: React.FC<CustomerLayoutProps> = ({

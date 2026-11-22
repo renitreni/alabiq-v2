@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\DeliveryAssignment;
 use App\Models\DeliveryTrackingEvent;
 use App\Models\Order;
+use App\Models\OrderStatusHistory;
 use App\Models\RestaurantBranch;
 use App\Models\Rider;
 use App\Models\User;
@@ -13,8 +14,9 @@ use App\Models\User;
  * Rider dispatch: assignment lifecycle on top of the order state machine.
  *
  * Invariants:
- *  - An order can only be dispatched from "ready" (ready -> rider_assigned
- *    is the only valid transition into rider_assigned).
+ *  - An order is dispatched from "ready"; after a rider rejection it stays
+ *    "rider_assigned" and can only be re-dispatched once no active
+ *    assignment remains.
  *  - Only online + active riders without an active assignment are eligible.
  *  - Rejecting an assignment does NOT roll the order back to ready; the
  *    restaurant must re-dispatch (order stays rider_assigned).
@@ -36,8 +38,13 @@ class DispatchService
      */
     public function assignToOrder(Order $order, Rider $rider, ?User $actor = null): DeliveryAssignment
     {
-        if ($order->status !== Order::STATUS_READY) {
+        if (! in_array($order->status, [Order::STATUS_READY, Order::STATUS_RIDER_ASSIGNED], true)) {
             throw new \DomainException("Order must be ready for pickup before dispatch (current: {$order->status}).");
+        }
+
+        if ($order->status === Order::STATUS_RIDER_ASSIGNED
+            && $order->assignments()->whereIn('status', DeliveryAssignment::ACTIVE_STATUSES)->exists()) {
+            throw new \DomainException('Order already has an active rider assignment.');
         }
 
         if (! $rider->is_active || ! $rider->is_online) {
@@ -71,8 +78,21 @@ class DispatchService
 
         $changedBy = $actor?->id ?? $order->restaurant?->owner_id ?? $order->user_id;
 
-        if (! $this->orderService->assignRider($order, $changedBy)) {
-            throw new \DomainException('Order could not transition to rider_assigned.');
+        if ($order->status === Order::STATUS_READY) {
+            if (! $this->orderService->assignRider($order, $changedBy)) {
+                throw new \DomainException('Order could not transition to rider_assigned.');
+            }
+        } else {
+            // Re-dispatch after a rejection: status stays rider_assigned,
+            // just record that a new rider was offered the order.
+            OrderStatusHistory::create([
+                'order_id' => $order->id,
+                'from_status' => $order->status,
+                'to_status' => $order->status,
+                'changed_by' => $changedBy,
+                'changed_by_type' => 'restaurant',
+                'note' => 'Re-dispatched to a new rider',
+            ]);
         }
 
         DeliveryTrackingEvent::create([

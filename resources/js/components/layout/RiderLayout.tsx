@@ -5,7 +5,7 @@ import { Navbar } from '@/components/ui/Navbar';
 interface RiderLayoutProps {
     children: React.ReactNode;
     title?: string;
-    rider?: { name: string; avatar?: string; isOnline?: boolean };
+    rider?: { name: string; avatar?: string; isOnline?: boolean } | null;
 }
 
 export const RiderLayout: React.FC<RiderLayoutProps> = ({

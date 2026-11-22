@@ -35,7 +35,7 @@ return new class extends Migration
             $table->softDeletes();
 
             $table->unique(['restaurant_id', 'slug']);
-            $table->index(['restaurant_id', 'menu_category_id', 'is_available', 'sort_order']);
+            $table->index(['restaurant_id', 'menu_category_id', 'is_available', 'sort_order'], 'menu_items_rest_cat_avail_sort_idx');
             $table->index(['restaurant_id', 'is_popular', 'is_available']);
         });
     }
