@@ -26,8 +26,9 @@ interface CartPayload {
 const money = (value: number) => `${Number(value).toFixed(2)} SAR`;
 
 export default function Cart() {
-    const { auth } = usePage().props as unknown as {
+    const { auth, restaurant } = usePage().props as unknown as {
         auth: { user?: { name: string; avatar?: string } | null };
+        restaurant: { menuUrl: string | null };
     };
     const [cart, setCart] = useState<CartPayload>({ items: [], subtotal: 0, item_count: 0 });
     const [loading, setLoading] = useState(true);
@@ -120,7 +121,7 @@ export default function Cart() {
                         title="Your cart is empty"
                         description="Add items from a restaurant to start checkout."
                         icon="🛒"
-                        action={<Button variant="primary" size="sm" as="a" href="/customer/cart">Order Now</Button>}
+                        action={<Button variant="primary" size="sm" as="a" href={restaurant.menuUrl ?? '/customer/cart'}>Order Now</Button>}
                     />
                 )}
             </PageScaffold>

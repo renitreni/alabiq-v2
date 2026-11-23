@@ -20,8 +20,9 @@ interface OrderSummary {
 const money = (value: number) => `${Number(value).toFixed(2)} SAR`;
 
 export default function Dashboard() {
-    const { auth } = usePage().props as unknown as {
+    const { auth, restaurant } = usePage().props as unknown as {
         auth: { user?: { name: string; avatar?: string } | null };
+        restaurant: { menuUrl: string | null };
     };
     const [orders, setOrders] = useState<OrderSummary[]>([]);
     const [loading, setLoading] = useState(true);
@@ -42,7 +43,7 @@ export default function Dashboard() {
                 eyebrow="Customer"
                 title={`Welcome back, ${auth?.user?.name ?? 'Customer'}`}
                 description="Review active orders, manage delivery addresses, or start a new order."
-                actions={<Button variant="primary" as="a" href="/customer/cart">Order Now</Button>}
+                actions={<Button variant="primary" as="a" href={restaurant.menuUrl ?? '/'}>Order Now</Button>}
             >
                 <div className="row g-3 mb-4">
                     <div className="col-md-4">
@@ -103,7 +104,7 @@ export default function Dashboard() {
                             <EmptyState
                                 title="No orders yet"
                                 description="Your recent orders will appear here after you place your first order."
-                                action={<Button variant="outline" size="sm" as="a" href="/">Start an Order</Button>}
+                                action={<Button variant="outline" size="sm" as="a" href={restaurant.menuUrl ?? '/'}>Start an Order</Button>}
                             />
                         )}
                     </CardBody>

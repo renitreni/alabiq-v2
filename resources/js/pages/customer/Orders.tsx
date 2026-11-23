@@ -29,8 +29,9 @@ const statuses = [
 const money = (value: number) => `${Number(value).toFixed(2)} SAR`;
 
 export default function Orders() {
-    const { auth } = usePage().props as unknown as {
+    const { auth, restaurant } = usePage().props as unknown as {
         auth: { user?: { name: string; avatar?: string } | null };
+        restaurant: { menuUrl: string | null };
     };
     const [orders, setOrders] = useState<OrderSummary[]>([]);
     const [status, setStatus] = useState('');
@@ -107,7 +108,7 @@ export default function Orders() {
                     <EmptyState
                         title="No orders found"
                         description={status ? `No ${status.replace('_', ' ')} orders match this filter.` : 'Orders you place will appear here.'}
-                        action={<Button variant="primary" size="sm" as="a" href="/customer/cart">Order Now</Button>}
+                        action={<Button variant="primary" size="sm" as="a" href={restaurant.menuUrl ?? '/customer/cart'}>Order Now</Button>}
                     />
                 )}
             </PageScaffold>

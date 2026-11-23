@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\Restaurant;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -53,6 +54,9 @@ class HandleInertiaRequests extends Middleware
                         'vehicle_type' => $user->rider->vehicle_type,
                     ] : null,
                 ] : null,
+            ],
+            'restaurant' => [
+                'menuUrl' => ($r = Restaurant::single()) ? route('restaurants.show', ['slug' => $r->slug]) : null,
             ],
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),
