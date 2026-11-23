@@ -42,7 +42,7 @@ export default function Dashboard() {
                 eyebrow="Customer"
                 title={`Welcome back, ${auth?.user?.name ?? 'Customer'}`}
                 description="Review active orders, manage delivery addresses, or start a new order."
-                actions={<Button variant="primary" as="a" href="/">Order Now</Button>}
+                actions={<Button variant="primary" as="a" href="/customer/cart">Order Now</Button>}
             >
                 <div className="row g-3 mb-4">
                     <div className="col-md-4">

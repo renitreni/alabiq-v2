@@ -6,6 +6,7 @@ use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Restaurant\RestaurantSetupController;
 use App\Models\Restaurant;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -24,6 +25,15 @@ use Inertia\Inertia;
 // Public storefront — one deployment serves one restaurant, so guests land
 // directly on its menu instead of a restaurant directory.
 Route::get('/', function () {
+    if (auth()->check()) {
+        return redirect()->route(match (auth()->user()->role) {
+            User::ROLE_RESTAURANT => 'restaurant.dashboard',
+            User::ROLE_RIDER => 'rider.dashboard',
+            User::ROLE_SUPER_ADMIN => 'admin.dashboard',
+            default => 'customer.dashboard',
+        });
+    }
+
     $restaurant = Restaurant::single();
 
     if ($restaurant) {

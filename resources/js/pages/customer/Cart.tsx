@@ -120,7 +120,7 @@ export default function Cart() {
                         title="Your cart is empty"
                         description="Add items from a restaurant to start checkout."
                         icon="🛒"
-                        action={<Button variant="primary" size="sm" as="a" href="/">Order Now</Button>}
+                        action={<Button variant="primary" size="sm" as="a" href="/customer/cart">Order Now</Button>}
                     />
                 )}
             </PageScaffold>

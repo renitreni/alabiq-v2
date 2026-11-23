@@ -61,15 +61,31 @@ class SingleRestaurantFlowTest extends TestCase
                 ->where('auth.user', null));
     }
 
-    public function test_home_hides_login_buttons_for_authenticated_users(): void
+    public function test_home_redirects_authenticated_users_to_their_dashboard(): void
     {
         $user = User::factory()->create();
 
         $this->actingAs($user)
             ->get('/')
-            ->assertInertia(fn ($page) => $page
-                ->component('marketplace/Home')
-                ->where('auth.user.id', $user->id));
+            ->assertRedirect(route('customer.dashboard', absolute: false));
+    }
+
+    public function test_home_redirects_each_role_to_its_dashboard(): void
+    {
+        $roles = [
+            User::ROLE_CUSTOMER => 'customer.dashboard',
+            User::ROLE_RESTAURANT => 'restaurant.dashboard',
+            User::ROLE_RIDER => 'rider.dashboard',
+            User::ROLE_SUPER_ADMIN => 'admin.dashboard',
+        ];
+
+        foreach ($roles as $role => $route) {
+            $user = User::factory()->role($role)->create();
+
+            $this->actingAs($user)
+                ->get('/')
+                ->assertRedirect(route($route, absolute: false));
+        }
     }
 
     public function test_restaurant_user_without_restaurant_is_redirected_to_setup(): void

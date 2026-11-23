@@ -107,7 +107,7 @@ export default function Orders() {
                     <EmptyState
                         title="No orders found"
                         description={status ? `No ${status.replace('_', ' ')} orders match this filter.` : 'Orders you place will appear here.'}
-                        action={<Button variant="primary" size="sm" as="a" href="/">Order Now</Button>}
+                        action={<Button variant="primary" size="sm" as="a" href="/customer/cart">Order Now</Button>}
                     />
                 )}
             </PageScaffold>

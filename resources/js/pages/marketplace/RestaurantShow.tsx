@@ -31,7 +31,7 @@ export default function RestaurantShow() {
                                             <p className="text-700">The best burgers in town made with 100% Angus beef, fresh ingredients, and secret sauces. Family owned since 2015.</p>
                                         </div>
                                         <div className="d-flex gap-2 flex-wrap">
-                                            <Button variant="primary" size="lg" className="flex-1">Order Now</Button>
+                                            <Button variant="primary" size="lg" className="flex-1" as="a" href="/customer/cart">Order Now</Button>
                                             <Button variant="outline" size="lg">View Menu</Button>
                                         </div>
                                     </div>
