@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from '@inertiajs/react';
 import { usePage } from '@inertiajs/react';
 
 interface NavbarProps {
@@ -23,8 +23,8 @@ const initials = (name?: string | null): string => (name ? name.charAt(0).toUppe
 
 const GuestMenu: React.FC = () => (
     <div className="d-flex align-items-center gap-2">
-        <a href="/login" className="btn btn-outline-danger btn-sm">Log In</a>
-        <a href="/register" className="btn btn-danger btn-sm">Sign Up</a>
+        <Link href="/login" className="btn btn-outline-danger btn-sm">Log In</Link>
+        <Link href="/register" className="btn btn-danger btn-sm">Sign Up</Link>
     </div>
 );
 
@@ -42,9 +42,9 @@ const CustomerMenu: React.FC<{ user: NonNullable<NavbarProps['user']> }> = ({ us
                 <span className="fw-medium d-none d-sm-inline">{user.name}</span>
             </button>
             <ul className="dropdown-menu dropdown-menu-end">
-                <li><a className="dropdown-item" href="/customer/profile">Profile</a></li>
-                <li><a className="dropdown-item" href="/customer/orders">My Orders</a></li>
-                <li><a className="dropdown-item" href="/customer/addresses">Addresses</a></li>
+                <li><Link href="/customer/profile" className="dropdown-item">Profile</Link></li>
+                <li><Link href="/customer/orders" className="dropdown-item">My Orders</Link></li>
+                <li><Link href="/customer/addresses" className="dropdown-item">Addresses</Link></li>
                 <li><hr className="dropdown-divider" /></li>
                 <li>
                     <form method="POST" action="/logout">
@@ -73,7 +73,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     return (
         <nav className={`navbar navbar-expand-lg navbar-light bg-white py-3 d-block ${className}`.trim()} role="navigation" aria-label="Main navigation">
             <div className="container">
-                <Link to="/" className="navbar-brand d-flex align-items-center" aria-label={`${logoAlt} - Home`}>
+                <Link href="/" className="navbar-brand d-flex align-items-center" aria-label={`${logoAlt} - Home`}>
                     <img src={logo} alt={logoAlt} height="45" className="me-2" />
                     <span className="fw-bold text-1000 d-none d-sm-inline">{logoAlt}</span>
                 </Link>
@@ -94,7 +94,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     <ul className="navbar-nav ms-auto pt-2 pt-lg-0 font-base">
                         {links.map((link, index) => (
                             <li key={index} className="nav-item px-2">
-                                <Link to={link.href} className="nav-link">
+                                <Link href={link.href} className="nav-link">
                                     {link.label}
                                 </Link>
                             </li>
