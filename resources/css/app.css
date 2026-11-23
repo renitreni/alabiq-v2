@@ -1,6 +1,9 @@
 /* Courier theme CSS is loaded globally in resources/views/app.blade.php.
    This file contains only Alabiq-specific additions and overrides. */
 
+/* FontAwesome Free icons */
+@import "@fortawesome/fontawesome-free/css/all.min.css";
+
 :root {
     --alabiq-primary: #F95C19;
     --alabiq-primary-hover: #F17228;

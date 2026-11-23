@@ -281,4 +281,122 @@ class RestaurantManagementApiTest extends TestCase
         ])->assertUnprocessable()
             ->assertJsonValidationErrors(['menu_category_id']);
     }
+
+    public function test_restaurant_can_create_menu_category(): void
+    {
+        Sanctum::actingAs($this->owner);
+
+        $this->postJson('/api/restaurant/menu/categories', [
+            'name' => 'Grill',
+            'slug' => 'grill',
+            'description' => 'Grilled specialties',
+            'sort_order' => 1,
+            'is_active' => true,
+        ])->assertCreated()
+            ->assertJsonPath('data.name', 'Grill')
+            ->assertJsonPath('data.slug', 'grill')
+            ->assertJsonPath('data.restaurant_id', $this->restaurant->id);
+
+        $this->assertDatabaseHas('menu_categories', [
+            'restaurant_id' => $this->restaurant->id,
+            'name' => 'Grill',
+            'slug' => 'grill',
+        ]);
+    }
+
+    public function test_restaurant_can_create_menu_category_with_auto_slug(): void
+    {
+        Sanctum::actingAs($this->owner);
+
+        $this->postJson('/api/restaurant/menu/categories', [
+            'name' => 'Main Dishes',
+        ])->assertCreated()
+            ->assertJsonPath('data.name', 'Main Dishes')
+            ->assertJsonPath('data.slug', 'main-dishes');
+    }
+
+    public function test_restaurant_cannot_create_category_with_duplicate_slug(): void
+    {
+        MenuCategory::factory()->create([
+            'restaurant_id' => $this->restaurant->id,
+            'slug' => 'grill',
+        ]);
+
+        Sanctum::actingAs($this->owner);
+
+        $this->postJson('/api/restaurant/menu/categories', [
+            'name' => 'Grill',
+            'slug' => 'grill',
+        ])->assertUnprocessable()
+            ->assertJsonValidationErrors(['slug']);
+    }
+
+    public function test_restaurant_can_update_own_menu_category(): void
+    {
+        Sanctum::actingAs($this->owner);
+
+        $this->putJson("/api/restaurant/menu/categories/{$this->category->id}", [
+            'name' => 'Updated Category',
+            'description' => 'New description',
+            'is_active' => false,
+        ])->assertOk()
+            ->assertJsonPath('data.name', 'Updated Category')
+            ->assertJsonPath('data.description', 'New description')
+            ->assertJsonPath('data.is_active', false);
+
+        $this->assertDatabaseHas('menu_categories', [
+            'id' => $this->category->id,
+            'name' => 'Updated Category',
+            'is_active' => false,
+        ]);
+    }
+
+    public function test_restaurant_cannot_update_another_restaurants_category(): void
+    {
+        $otherCategory = MenuCategory::factory()->create();
+
+        Sanctum::actingAs($this->owner);
+
+        $this->putJson("/api/restaurant/menu/categories/{$otherCategory->id}", [
+            'name' => 'Hacked',
+        ])->assertNotFound();
+    }
+
+    public function test_restaurant_can_delete_own_menu_category_without_items(): void
+    {
+        Sanctum::actingAs($this->owner);
+
+        $this->deleteJson("/api/restaurant/menu/categories/{$this->category->id}")
+            ->assertOk()
+            ->assertJsonPath('message', 'Menu category deleted');
+
+        $this->assertDatabaseMissing('menu_categories', [
+            'id' => $this->category->id,
+        ]);
+    }
+
+    public function test_restaurant_cannot_delete_category_with_menu_items(): void
+    {
+        MenuItem::factory()->create([
+            'restaurant_id' => $this->restaurant->id,
+            'menu_category_id' => $this->category->id,
+        ]);
+
+        Sanctum::actingAs($this->owner);
+
+        $this->deleteJson("/api/restaurant/menu/categories/{$this->category->id}")
+            ->assertUnprocessable();
+
+        $this->assertDatabaseHas('menu_categories', ['id' => $this->category->id]);
+    }
+
+    public function test_restaurant_cannot_delete_another_restaurants_category(): void
+    {
+        $otherCategory = MenuCategory::factory()->create();
+
+        Sanctum::actingAs($this->owner);
+
+        $this->deleteJson("/api/restaurant/menu/categories/{$otherCategory->id}")
+            ->assertNotFound();
+    }
 }

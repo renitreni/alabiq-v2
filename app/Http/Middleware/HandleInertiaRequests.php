@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Models\Restaurant;
+use App\Services\CartService;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -31,6 +32,7 @@ class HandleInertiaRequests extends Middleware
     public function share(Request $request): array
     {
         $user = $request->user();
+        $cartService = new CartService;
 
         return array_merge(parent::share($request), [
             'auth' => [
@@ -58,6 +60,10 @@ class HandleInertiaRequests extends Middleware
             'restaurant' => [
                 'menuUrl' => ($r = Restaurant::single()) ? route('restaurants.show', ['slug' => $r->slug]) : null,
             ],
+            'cart' => [
+                'item_count' => $cartService->getItemCount(),
+                'subtotal' => $cartService->getSubtotal(),
+            ],
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),
                 'error' => fn () => $request->session()->get('error'),
@@ -68,6 +74,7 @@ class HandleInertiaRequests extends Middleware
                 'timezone' => config('app.timezone'),
                 'currency' => config('alabiq.currency', 'SAR'),
                 'mapbox_token' => config('alabiq.mapbox.token'),
+                'map_provider' => config('alabiq.map_provider', 'free'),
             ],
         ]);
     }

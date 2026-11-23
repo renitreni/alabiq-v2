@@ -34,6 +34,7 @@ export const RestaurantLayout: React.FC<RestaurantLayoutProps> = ({
                         { label: 'Menu', href: '/restaurant/menu' },
                         { label: 'Profile', href: '/restaurant/profile' },
                     ]}
+                    showCart={false}
                     userMenu={
                         <div className="d-flex align-items-center gap-3">
                             <div className="dropdown">

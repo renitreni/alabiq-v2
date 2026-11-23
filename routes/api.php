@@ -41,6 +41,8 @@ Route::prefix('marketplace')->name('marketplace.')->group(function () {
 // Protected customer routes (require authentication)
 Route::middleware('auth:sanctum')->prefix('customer')->name('customer.')->group(function () {
     Route::patch('/addresses/{address}/default', [CustomerAddressController::class, 'setDefault'])->name('addresses.default');
+    Route::get('/addresses/geocode', [CustomerAddressController::class, 'geocode'])->name('addresses.geocode');
+    Route::get('/addresses/reverse-geocode', [CustomerAddressController::class, 'reverseGeocode'])->name('addresses.reverse-geocode');
     Route::apiResource('addresses', CustomerAddressController::class)
         ->only(['index', 'store', 'show', 'update', 'destroy']);
 });
@@ -76,6 +78,11 @@ Route::middleware(['auth:sanctum', 'role:restaurant'])->prefix('restaurant')->na
     Route::get('/menu/{menuItem}', [RestaurantMenuController::class, 'show'])->name('menu.show');
     Route::put('/menu/{menuItem}', [RestaurantMenuController::class, 'update'])->name('menu.update');
     Route::delete('/menu/{menuItem}', [RestaurantMenuController::class, 'destroy'])->name('menu.destroy');
+
+    // Menu categories
+    Route::post('/menu/categories', [RestaurantMenuController::class, 'storeCategory'])->name('menu.categories.store');
+    Route::put('/menu/categories/{category}', [RestaurantMenuController::class, 'updateCategory'])->name('menu.categories.update');
+    Route::delete('/menu/categories/{category}', [RestaurantMenuController::class, 'destroyCategory'])->name('menu.categories.destroy');
     Route::get('/reports/sales', [RestaurantReportsController::class, 'sales'])->name('reports.sales');
     Route::get('/settlements', [SettlementController::class, 'own'])->name('settlements.own');
 });

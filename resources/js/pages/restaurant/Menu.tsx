@@ -50,6 +50,16 @@ export default function Menu() {
     const [busyId, setBusyId] = useState<number | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [notice, setNotice] = useState<string | null>(null);
+    const [showCategoryForm, setShowCategoryForm] = useState(false);
+    const [categorySubmitting, setCategorySubmitting] = useState(false);
+    const [categoryForm, setCategoryForm] = useState({
+        name: '',
+        slug: '',
+        description: '',
+        image: '',
+        sort_order: '0',
+        is_active: true,
+    });
 
     const loadMenu = useCallback(async () => {
         const { data } = await api.get('/restaurant/menu');
@@ -115,6 +125,40 @@ export default function Menu() {
         }
     };
 
+    const createCategory = async () => {
+        setCategorySubmitting(true);
+        setError(null);
+        setNotice(null);
+
+        try {
+            await api.post('/restaurant/menu/categories', {
+                name: categoryForm.name,
+                slug: categoryForm.slug || undefined,
+                description: categoryForm.description || undefined,
+                image: categoryForm.image || undefined,
+                sort_order: Number(categoryForm.sort_order) || 0,
+                is_active: categoryForm.is_active,
+            });
+            setNotice(`Category "${categoryForm.name}" created.`);
+            setShowCategoryForm(false);
+            setCategoryForm({
+                name: '',
+                slug: '',
+                description: '',
+                image: '',
+                sort_order: '0',
+                is_active: true,
+            });
+            await loadMenu();
+        } catch (e: any) {
+            const validationErrors = e?.response?.data?.errors;
+            const firstError = validationErrors ? Object.values<string[]>(validationErrors)[0]?.[0] : null;
+            setError(firstError ?? e?.response?.data?.message ?? 'Could not create the category.');
+        } finally {
+            setCategorySubmitting(false);
+        }
+    };
+
     const groupedItems = categories
         .map((category) => ({
             category,
@@ -131,10 +175,102 @@ export default function Menu() {
                 eyebrow="Menu"
                 title="Menu Management"
                 description="Manage categories, item pricing, availability, and catalog visibility."
-                actions={<Button variant="primary" size="sm" as="a" href="/restaurant/menu/create">Add Menu Item</Button>}
+                actions={(
+                    <>
+                        <Button variant="outline" size="sm" onClick={() => setShowCategoryForm(!showCategoryForm)}>
+                            {showCategoryForm ? 'Cancel Category' : 'Add Category'}
+                        </Button>
+                        <Button variant="primary" size="sm" as="a" href="/restaurant/menu/create">Add Menu Item</Button>
+                    </>
+                )}
             >
                 {error && <div className="alert alert-danger">{error}</div>}
                 {notice && <div className="alert alert-success">{notice}</div>}
+
+                {showCategoryForm && (
+                    <Card>
+                        <CardBody className="p-4">
+                            <form onSubmit={(event) => { event.preventDefault(); createCategory(); }}>
+                                <div className="row g-3">
+                                    <div className="col-lg-6">
+                                        <label htmlFor="category_name" className="form-label fw-semibold">Category name</label>
+                                        <input
+                                            id="category_name"
+                                            className="form-control"
+                                            value={categoryForm.name}
+                                            onChange={(event) => setCategoryForm((current) => ({ ...current, name: event.target.value }))}
+                                            placeholder="Main dishes"
+                                            required
+                                        />
+                                    </div>
+                                    <div className="col-lg-4">
+                                        <label htmlFor="category_slug" className="form-label fw-semibold">Slug</label>
+                                        <input
+                                            id="category_slug"
+                                            className="form-control"
+                                            value={categoryForm.slug}
+                                            onChange={(event) => setCategoryForm((current) => ({ ...current, slug: event.target.value }))}
+                                            placeholder="main-dishes"
+                                        />
+                                    </div>
+                                    <div className="col-lg-2">
+                                        <label htmlFor="category_sort_order" className="form-label fw-semibold">Sort order</label>
+                                        <input
+                                            id="category_sort_order"
+                                            type="number"
+                                            min="0"
+                                            className="form-control"
+                                            value={categoryForm.sort_order}
+                                            onChange={(event) => setCategoryForm((current) => ({ ...current, sort_order: event.target.value }))}
+                                        />
+                                    </div>
+                                    <div className="col-12">
+                                        <label htmlFor="category_description" className="form-label fw-semibold">Description</label>
+                                        <textarea
+                                            id="category_description"
+                                            className="form-control"
+                                            rows={2}
+                                            value={categoryForm.description}
+                                            onChange={(event) => setCategoryForm((current) => ({ ...current, description: event.target.value }))}
+                                            placeholder="Describe this category"
+                                        />
+                                    </div>
+                                    <div className="col-12">
+                                        <label htmlFor="category_image" className="form-label fw-semibold">Image URL</label>
+                                        <input
+                                            id="category_image"
+                                            type="url"
+                                            className="form-control"
+                                            value={categoryForm.image}
+                                            onChange={(event) => setCategoryForm((current) => ({ ...current, image: event.target.value }))}
+                                            placeholder="https://example.com/category.jpg"
+                                        />
+                                    </div>
+                                    <div className="col-12">
+                                        <div className="form-check">
+                                            <input
+                                                id="category_is_active"
+                                                type="checkbox"
+                                                className="form-check-input"
+                                                checked={categoryForm.is_active}
+                                                onChange={(event) => setCategoryForm((current) => ({ ...current, is_active: event.target.checked }))}
+                                            />
+                                            <label htmlFor="category_is_active" className="form-check-label">Active</label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="d-flex gap-2 mt-3">
+                                    <Button type="submit" variant="primary" loading={categorySubmitting}>
+                                        Save Category
+                                    </Button>
+                                    <Button type="button" variant="outline" onClick={() => setShowCategoryForm(false)}>
+                                        Cancel
+                                    </Button>
+                                </div>
+                            </form>
+                        </CardBody>
+                    </Card>
+                )}
 
                 {loading ? (
                     <Card>

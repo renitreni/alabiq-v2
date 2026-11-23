@@ -7,6 +7,7 @@ use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Restaurant\RestaurantSetupController;
 use App\Models\Restaurant;
 use App\Models\User;
+use App\Services\MarketplaceService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -53,7 +54,15 @@ Route::get('/restaurants', function () {
     return redirect('/');
 })->name('restaurants.index');
 
-Route::get('/restaurants/{slug}', fn () => Inertia::render('marketplace/RestaurantShow'))->name('restaurants.show');
+Route::get('/restaurants/{slug}', function (string $slug) {
+    $data = app(MarketplaceService::class)->getRestaurantWithMenu($slug);
+
+    if (! $data) {
+        abort(404);
+    }
+
+    return Inertia::render('marketplace/RestaurantShow', $data);
+})->name('restaurants.show');
 
 Route::get('/search', fn () => redirect('/'))->name('search');
 

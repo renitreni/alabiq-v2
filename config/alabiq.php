@@ -59,6 +59,17 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Map Provider
+    |--------------------------------------------------------------------------
+    |
+    | 'free'   -> OpenStreetMap via Leaflet (no API key, default)
+    | 'mapbox' -> Mapbox GL JS (requires MAPBOX_TOKEN)
+    | 'google' -> Google Maps JavaScript API (requires GOOGLE_MAPS_KEY)
+    */
+    'map_provider' => env('ALABIQ_MAP_PROVIDER', 'mapbox'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Tap Payments Configuration
     |--------------------------------------------------------------------------
     */

@@ -34,6 +34,7 @@ export const RiderLayout: React.FC<RiderLayoutProps> = ({
                         { label: 'Earnings', href: '/rider/earnings' },
                         { label: 'Profile', href: '/rider/profile' },
                     ]}
+                    showCart={false}
                     userMenu={
                         <div className="d-flex align-items-center gap-3">
                             <div className="d-flex align-items-center gap-2 px-2 py-1 rounded-pill bg-soft-success">

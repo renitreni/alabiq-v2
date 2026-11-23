@@ -1,10 +1,11 @@
-import { FormEvent, useEffect, useState } from 'react';
+import { FormEvent, useCallback, useEffect, useState } from 'react';
 import { usePage } from '@inertiajs/react';
 import { CustomerLayout } from '@/components/layout/CustomerLayout';
 import Button from '@/components/ui/Button';
 import { Card, CardBody } from '@/components/ui/Card';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { PageScaffold } from '@/components/ui/PageScaffold';
+import AddressMap from '@/components/map/AddressMap';
 import api from '@/lib/axios';
 
 interface CustomerAddress {
@@ -19,6 +20,9 @@ interface CustomerAddress {
     district?: string | null;
     postal_code?: string | null;
     formatted_address: string;
+    latitude?: number | null;
+    longitude?: number | null;
+    place_id?: string | null;
     is_default: boolean;
 }
 
@@ -48,6 +52,11 @@ const emptyForm: AddressForm = {
     is_default: false,
 };
 
+interface MapCoordinates {
+    lat: number;
+    lng: number;
+}
+
 export default function Addresses() {
     const { auth } = usePage().props as unknown as {
         auth: { user?: { name: string; avatar?: string } | null };
@@ -59,6 +68,10 @@ export default function Addresses() {
     const [busyId, setBusyId] = useState<number | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [notice, setNotice] = useState<string | null>(null);
+    const [pickedCoords, setPickedCoords] = useState<MapCoordinates | null>(null);
+    const [placeId, setPlaceId] = useState<string | null>(null);
+    const [geocoding, setGeocoding] = useState(false);
+    const [reverseGeocoding, setReverseGeocoding] = useState(false);
 
     const loadAddresses = async () => {
         const { data } = await api.get('/customer/addresses');
@@ -82,8 +95,14 @@ export default function Addresses() {
         setNotice(null);
 
         try {
-            await api.post('/customer/addresses', form);
+            const payload = {
+                ...form,
+                ...(pickedCoords ? { latitude: pickedCoords.lat, longitude: pickedCoords.lng } : {}),
+                ...(placeId ? { place_id: placeId } : {}),
+            };
+            await api.post('/customer/addresses', payload);
             setForm(emptyForm);
+            clearPick();
             setNotice('Address saved.');
             await loadAddresses();
         } catch (e: any) {
@@ -120,6 +139,92 @@ export default function Addresses() {
             setBusyId(null);
         }
     };
+
+    const geocodeAddress = async () => {
+        const { street, city, district, postal_code } = form;
+        const query = [street, district, city, postal_code].filter(Boolean).join(', ');
+        if (!query) {
+            setError('Enter a street address before geocoding.');
+            return;
+        }
+
+        setGeocoding(true);
+        setError(null);
+
+        try {
+            const { data } = await api.get('/customer/addresses/geocode', { params: { q: query } });
+            const results = data?.data ?? [];
+            if (!results.length) {
+                setError('No coordinates found for this address.');
+                return;
+            }
+            const top = results[0];
+            setPickedCoords({ lat: top.latitude, lng: top.longitude });
+            setPlaceId(top.place_id ?? null);
+            setNotice('Location pinned on the map.');
+        } catch (e: any) {
+            setError(e?.response?.data?.message ?? 'Could not geocode the address.');
+        } finally {
+            setGeocoding(false);
+        }
+    };
+
+    const reverseGeocodePicked = async () => {
+        if (!pickedCoords) return;
+        setReverseGeocoding(true);
+        setError(null);
+
+        try {
+            const { data } = await api.get('/customer/addresses/reverse-geocode', {
+                params: { lat: pickedCoords.lat, lng: pickedCoords.lng },
+            });
+            const result = data?.data ?? {};
+            if (result.address) {
+                setForm((current) => ({
+                    ...current,
+                    street: result.street ?? current.street,
+                    city: result.city ?? current.city,
+                    district: result.district ?? current.district,
+                    postal_code: result.postal_code ?? current.postal_code,
+                }));
+                setNotice('Address details filled from the map.');
+            }
+        } catch (e: any) {
+            setError(e?.response?.data?.message ?? 'Could not resolve the address.');
+        } finally {
+            setReverseGeocoding(false);
+        }
+    };
+
+    const useCurrentLocation = async () => {
+        setGeocoding(true);
+        setError(null);
+
+        try {
+            if (!navigator.geolocation) throw new Error('Geolocation not supported');
+            const position = await new Promise<GeolocationPosition>((resolve, reject) =>
+                navigator.geolocation!.getCurrentPosition(resolve, reject, {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 0,
+                })
+            );
+            setPickedCoords({
+                lat: position.coords.latitude,
+                lng: position.coords.longitude,
+            });
+            setNotice('Current location pinned on the map.');
+        } catch (e: any) {
+            setError(e?.message ?? 'Could not access your location.');
+        } finally {
+            setGeocoding(false);
+        }
+    };
+
+    const clearPick = useCallback(() => {
+        setPickedCoords(null);
+        setPlaceId(null);
+    }, []);
 
     return (
         <CustomerLayout title="Delivery Addresses - Alabiq" user={auth?.user}>
@@ -173,6 +278,62 @@ export default function Addresses() {
                                         <label htmlFor="landmark" className="form-label fw-semibold">Landmark</label>
                                         <input id="landmark" className="form-control" value={form.landmark} onChange={(event) => updateField('landmark', event.target.value)} />
                                     </div>
+
+                                    <div className="card mb-3 p-3 bg-50">
+                                        <h6 className="fw-semibold mb-2">Map location</h6>
+                                        {pickedCoords ? (
+                                            <>
+                                                <div className="d-flex justify-content-between text-700 small mb-2">
+                                                    <span>Pinned location</span>
+                                                    <span>{pickedCoords.lat.toFixed(6)}, {pickedCoords.lng.toFixed(6)}</span>
+                                                </div>
+                                                <div className="d-flex gap-2 flex-wrap mb-2">
+                                                    <Button
+                                                        type="button"
+                                                        variant="outline"
+                                        size="sm"
+                                                        onClick={reverseGeocodePicked}
+                                                        loading={reverseGeocoding}
+                                                        disabled={reverseGeocoding}
+                                                    >
+                                                        Fill address from map
+                                                    </Button>
+                                                    <Button
+                                                        type="button"
+                                                        variant="outline"
+                                        size="sm"
+                                                        onClick={clearPick}
+                                                    >
+                                                        Clear
+                                                    </Button>
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <div className="d-flex gap-2 flex-wrap">
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={geocodeAddress}
+                                                    loading={geocoding}
+                                                    disabled={geocoding}
+                                                >
+                                                    Geocode address
+                                                </Button>
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={useCurrentLocation}
+                                                    loading={geocoding}
+                                                    disabled={geocoding}
+                                                >
+                                                    Use my location
+                                                </Button>
+                                            </div>
+                                        )}
+                                    </div>
+
                                     <div className="form-check mb-3">
                                         <input
                                             id="is_default"
@@ -183,7 +344,24 @@ export default function Addresses() {
                                         />
                                         <label htmlFor="is_default" className="form-check-label">Set as default address</label>
                                     </div>
-                                    <Button type="submit" variant="primary" className="w-100" loading={saving}>Save Address</Button>
+
+                                    <Card className="mt-4">
+                                        <CardBody className="p-0">
+                                            <h6 className="fw-semibold p-3 mb-0 border-bottom">Pick location on map</h6>
+                                            <AddressMap
+                                                addresses={[]}
+                                                selectedAddressId={null}
+                                                onLocationPick={(coordinates) => {
+                                                    setPickedCoords(coordinates);
+                                                    setNotice('Location pinned from the map. Fill details and save.');
+                                                }}
+                                                height="300px"
+                                                locateOnLoad
+                                            />
+                                        </CardBody>
+                                    </Card>
+
+                                    <Button type="submit" variant="primary" className="w-100 mt-3" loading={saving}>Save Address</Button>
                                 </form>
                             </CardBody>
                         </Card>
@@ -192,34 +370,58 @@ export default function Addresses() {
                     <div className="col-lg-7">
                         {loading ? (
                             <Card><CardBody className="p-4 text-700">Loading addresses…</CardBody></Card>
-                        ) : addresses.length ? (
-                            <div className="d-flex flex-column gap-3">
-                                {addresses.map((address) => (
-                                    <Card key={address.id} variant="outlined">
-                                        <CardBody className="p-4">
-                                            <div className="d-flex justify-content-between gap-3">
-                                                <div>
-                                                    <h3 className="fs-6 fw-bold text-1000 mb-1">
-                                                        {address.label ?? 'Saved address'} {address.is_default && <span className="badge bg-soft-primary text-primary ms-1">Default</span>}
-                                                    </h3>
-                                                    <p className="text-700 small mb-0">{address.formatted_address}</p>
-                                                </div>
-                                                <div className="d-flex gap-2 align-items-start">
-                                                    {!address.is_default && (
-                                                        <Button variant="outline" size="sm" loading={busyId === address.id} onClick={() => setDefault(address.id)}>Set Default</Button>
-                                                    )}
-                                                    <Button variant="ghost" size="sm" loading={busyId === address.id} onClick={() => removeAddress(address.id)}>Remove</Button>
-                                                </div>
-                                            </div>
-                                        </CardBody>
-                                    </Card>
-                                ))}
-                            </div>
                         ) : (
-                            <EmptyState
-                                title="No addresses saved"
-                                description="Add a delivery address to make checkout faster."
-                            />
+                            <div className="d-flex flex-column gap-3">
+                                {addresses.length ? (
+                                    <>
+                                        {addresses.map((address) => (
+                                            <Card key={address.id} variant="outlined">
+                                                <CardBody className="p-4">
+                                                    <div className="d-flex justify-content-between gap-3">
+                                                        <div>
+                                                            <h3 className="fs-6 fw-bold text-1000 mb-1">
+                                                                {address.label ?? 'Saved address'} {address.is_default && <span className="badge bg-soft-primary text-primary ms-1">Default</span>}
+                                                            </h3>
+                                                            <p className="text-700 small mb-0">{address.formatted_address}</p>
+                                                            {address.latitude && address.longitude && (
+                                                                <p className="text-700 small mt-1">
+                                                                    {address.latitude.toFixed(6)}, {address.longitude.toFixed(6)}
+                                                                </p>
+                                                            )}
+                                                        </div>
+                                                        <div className="d-flex gap-2 align-items-start">
+                                                            {!address.is_default && (
+                                                                <Button variant="outline" size="sm" loading={busyId === address.id} onClick={() => setDefault(address.id)}>Set Default</Button>
+                                                            )}
+                                                            <Button variant="ghost" size="sm" loading={busyId === address.id} onClick={() => removeAddress(address.id)}>Remove</Button>
+                                                        </div>
+                                                    </div>
+                                                </CardBody>
+                                            </Card>
+                                        ))}
+                                        <Card>
+                                            <CardBody className="p-0">
+                                                <h6 className="fw-semibold p-3 mb-0 border-bottom">Saved addresses on map</h6>
+                                                <AddressMap
+                                                    addresses={addresses}
+                                                    selectedAddressId={addresses.find((a) => a.is_default)?.id ?? null}
+                                                    onLocationPick={(coordinates) => {
+                                                        setPickedCoords(coordinates);
+                                                        setNotice('Location picked from the map. Fill details and save.');
+                                                    }}
+                                                    height="340px"
+                                                    locateOnLoad
+                                                />
+                                            </CardBody>
+                                        </Card>
+                                    </>
+                                ) : (
+                                    <EmptyState
+                                        title="No addresses saved"
+                                        description="Add a delivery address to make checkout faster."
+                                    />
+                                )}
+                            </div>
                         )}
                     </div>
                 </div>

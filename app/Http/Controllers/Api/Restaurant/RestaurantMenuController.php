@@ -135,6 +135,99 @@ class RestaurantMenuController extends Controller
     }
 
     /**
+     * Store a new menu category for the authenticated restaurant.
+     */
+    public function storeCategory(Request $request): JsonResponse
+    {
+        $restaurant = $this->restaurant($request);
+
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'slug' => ['nullable', 'string', 'max:255', Rule::unique('menu_categories')->where(function ($query) use ($restaurant) {
+                $query->where('restaurant_id', $restaurant->id);
+            })],
+            'description' => ['nullable', 'string', 'max:1000'],
+            'image' => ['nullable', 'url', 'max:2048'],
+            'sort_order' => ['nullable', 'integer', 'min:0'],
+            'is_active' => ['nullable', 'boolean'],
+        ]);
+
+        $slug = $validated['slug'] ?? Str::slug($validated['name']) ?: 'category';
+
+        $category = MenuCategory::create([
+            'restaurant_id' => $restaurant->id,
+            'name' => $validated['name'],
+            'slug' => $slug,
+            'description' => $validated['description'] ?? null,
+            'image' => $validated['image'] ?? null,
+            'sort_order' => $validated['sort_order'] ?? 0,
+            'is_active' => $request->boolean('is_active', true),
+        ]);
+
+        return response()->json([
+            'data' => $category,
+        ], 201);
+    }
+
+    /**
+     * Update a menu category owned by the restaurant.
+     */
+    public function updateCategory(Request $request, MenuCategory $category): JsonResponse
+    {
+        $restaurant = $this->restaurant($request);
+
+        if ($category->restaurant_id !== $restaurant->id) {
+            abort(404, 'Menu category not found.');
+        }
+
+        $validated = $request->validate([
+            'name' => ['sometimes', 'required', 'string', 'max:255'],
+            'slug' => ['sometimes', 'nullable', 'string', 'max:255', Rule::unique('menu_categories')->where(function ($query) use ($restaurant) {
+                $query->where('restaurant_id', $restaurant->id);
+            })->ignore($category->id)],
+            'description' => ['sometimes', 'nullable', 'string', 'max:1000'],
+            'image' => ['sometimes', 'nullable', 'url', 'max:2048'],
+            'sort_order' => ['sometimes', 'nullable', 'integer', 'min:0'],
+            'is_active' => ['sometimes', 'nullable', 'boolean'],
+        ]);
+
+        $category->update([
+            'name' => $validated['name'] ?? $category->name,
+            'slug' => $validated['slug'] ?? Str::slug($validated['name'] ?? $category->name) ?: $category->slug,
+            'description' => $validated['description'] ?? $category->description,
+            'image' => $validated['image'] ?? $category->image,
+            'sort_order' => $validated['sort_order'] ?? $category->sort_order,
+            'is_active' => $request->boolean('is_active', $category->is_active),
+        ]);
+
+        return response()->json([
+            'data' => $category->refresh(),
+        ]);
+    }
+
+    /**
+     * Delete a menu category owned by the restaurant.
+     */
+    public function destroyCategory(Request $request, MenuCategory $category): JsonResponse
+    {
+        $restaurant = $this->restaurant($request);
+
+        if ($category->restaurant_id !== $restaurant->id) {
+            abort(404, 'Menu category not found.');
+        }
+
+        if ($category->menuItems()->exists()) {
+            abort(422, 'Cannot delete a category that still has menu items.');
+        }
+
+        $category->delete();
+
+        return response()->json([
+            'message' => 'Menu category deleted',
+        ]);
+    }
+
+    /**
      * Resolve the authenticated user's restaurant.
      */
     private function restaurant(Request $request): Restaurant

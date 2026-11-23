@@ -34,6 +34,7 @@ export const SuperAdminLayout: React.FC<SuperAdminLayoutProps> = ({
                         { label: 'Reports', href: '/admin/reports' },
                         { label: 'Settings', href: '/admin/settings' },
                     ]}
+                    showCart={false}
                     userMenu={
                         <div className="d-flex align-items-center gap-3">
                             <span className="badge bg-danger px-3 py-2 small">Super Admin</span>

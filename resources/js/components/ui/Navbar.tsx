@@ -9,6 +9,7 @@ interface NavbarProps {
     userMenu?: React.ReactNode;
     user?: { name: string; avatar?: string | null } | null;
     className?: string;
+    showCart?: boolean;
 }
 
 type AuthUser = {
@@ -17,6 +18,11 @@ type AuthUser = {
     email: string;
     role: string;
     avatar?: string | null;
+};
+
+type CartProps = {
+    item_count: number;
+    subtotal: number;
 };
 
 const initials = (name?: string | null): string => (name ? name.charAt(0).toUpperCase() : '?');
@@ -63,12 +69,15 @@ export const Navbar: React.FC<NavbarProps> = ({
     userMenu,
     user: userProp,
     className = '',
+    showCart = true,
 }) => {
-    const { auth } = usePage().props as unknown as {
+    const { auth, cart } = usePage().props as unknown as {
         auth: { user: AuthUser | null };
+        cart: CartProps | null;
     };
 
     const user = userProp ?? auth?.user ?? null;
+    const itemCount = cart?.item_count ?? 0;
 
     return (
         <nav className={`navbar navbar-expand-lg navbar-light bg-white py-3 d-block ${className}`.trim()} role="navigation" aria-label="Main navigation">
@@ -102,6 +111,21 @@ export const Navbar: React.FC<NavbarProps> = ({
                     </ul>
 
                     <div className="d-flex align-items-center gap-3 mt-3 mt-lg-0">
+                        {showCart && (
+                            <Link
+                                href="/customer/cart"
+                                className="btn btn-outline-danger btn-sm position-relative d-flex align-items-center justify-content-center"
+                                style={{ width: 36, height: 36 }}
+                                aria-label={`Cart${itemCount ? `, ${itemCount} items` : ''}`}
+                            >
+                                <i className="fa-solid fa-cart-shopping flex-shrink-0" aria-hidden="true"></i>
+                                {itemCount > 0 && (
+                                    <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger text-white small px-2 py-1">
+                                        {itemCount}
+                                    </span>
+                                )}
+                            </Link>
+                        )}
                         {userMenu ?? (user ? <CustomerMenu user={user} /> : <GuestMenu />)}
                     </div>
                 </div>
