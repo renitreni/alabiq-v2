@@ -73,6 +73,24 @@ class LocationService
      */
     public function reverseGeocode(float $lat, float $lng): ?string
     {
+        $details = $this->reverseGeocodeDetails($lat, $lng);
+
+        return $details['address'] ?? null;
+    }
+
+    /**
+     * Reverse geocode coordinates into a display address plus parsed address
+     * components (street, city, district, postal code), or null on failure.
+     *
+     * Mapbox returns structured context entries keyed by type prefix
+     * ("place", "district", "postcode", ...); the street is composed from
+     * the house number ("address") and street name ("text") of an
+     * "address"-type feature.
+     *
+     * @return array{address: string, street: ?string, city: ?string, district: ?string, postal_code: ?string}|null
+     */
+    public function reverseGeocodeDetails(float $lat, float $lng): ?array
+    {
         $token = config('alabiq.mapbox.token');
 
         if (! $token) {
@@ -89,7 +107,33 @@ class LocationService
                 return null;
             }
 
-            return $response->json('features.0.place_name');
+            $feature = $response->json('features.0');
+
+            if (! is_array($feature) || ! isset($feature['place_name'])) {
+                return null;
+            }
+
+            $components = collect($feature['context'] ?? [])->keyBy(
+                fn ($item) => explode('.', $item['id'] ?? '')[0] ?? ''
+            );
+
+            $street = null;
+            if (isset($feature['address'], $feature['text'])) {
+                $street = $feature['address'].' '.$feature['text'];
+            } elseif (isset($feature['text']) && str_starts_with($feature['id'] ?? '', 'address.')) {
+                $street = $feature['text'];
+            }
+
+            return [
+                'address' => $feature['place_name'],
+                'street' => $street,
+                'city' => $components->get('place')['text'] ?? $components->get('locality')['text'] ?? null,
+                'district' => $components->get('district')['text']
+                    ?? $components->get('neighborhood')['text']
+                    ?? $components->get('neighbourhood')['text']
+                    ?? null,
+                'postal_code' => $components->get('postcode')['text'] ?? null,
+            ];
         } catch (\Throwable) {
             return null;
         }

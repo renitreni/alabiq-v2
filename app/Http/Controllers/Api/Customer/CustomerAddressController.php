@@ -142,7 +142,7 @@ class CustomerAddressController extends Controller
     }
 
     /**
-     * Reverse geocode coordinates into a display address.
+     * Reverse geocode coordinates into address components for form autofill.
      */
     public function reverseGeocode(Request $request): JsonResponse
     {
@@ -151,26 +151,18 @@ class CustomerAddressController extends Controller
             'lng' => ['required', 'numeric', 'between:-180,180'],
         ]);
 
-        $address = $this->locationService->reverseGeocode(
+        $details = $this->locationService->reverseGeocodeDetails(
             $request->float('lat'),
             $request->float('lng')
         );
 
-        if (! $address) {
+        if (! $details) {
             return response()->json([
                 'message' => 'Could not resolve an address for these coordinates.',
             ], 404);
         }
 
-        return response()->json([
-            'data' => [
-                'address' => $address,
-                'street' => null,
-                'city' => null,
-                'district' => null,
-                'postal_code' => null,
-            ],
-        ]);
+        return response()->json(['data' => $details]);
     }
 
     /**

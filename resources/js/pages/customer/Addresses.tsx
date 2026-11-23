@@ -169,14 +169,13 @@ export default function Addresses() {
         }
     };
 
-    const reverseGeocodePicked = async () => {
-        if (!pickedCoords) return;
+    const applyReverseGeocode = async (coords: MapCoordinates) => {
         setReverseGeocoding(true);
         setError(null);
 
         try {
             const { data } = await api.get('/customer/addresses/reverse-geocode', {
-                params: { lat: pickedCoords.lat, lng: pickedCoords.lng },
+                params: { lat: coords.lat, lng: coords.lng },
             });
             const result = data?.data ?? {};
             if (result.address) {
@@ -187,13 +186,25 @@ export default function Addresses() {
                     district: result.district ?? current.district,
                     postal_code: result.postal_code ?? current.postal_code,
                 }));
-                setNotice('Address details filled from the map.');
+                setNotice('Address details filled from the pin. You can still edit them.');
+            } else {
+                setNotice('Location pinned. Enter the address details manually.');
             }
         } catch (e: any) {
             setError(e?.response?.data?.message ?? 'Could not resolve the address.');
         } finally {
             setReverseGeocoding(false);
         }
+    };
+
+    const reverseGeocodePicked = async () => {
+        if (!pickedCoords) return;
+        await applyReverseGeocode(pickedCoords);
+    };
+
+    const handleLocationPick = async (coordinates: MapCoordinates) => {
+        setPickedCoords(coordinates);
+        await applyReverseGeocode(coordinates);
     };
 
     const useCurrentLocation = async () => {
@@ -348,13 +359,13 @@ export default function Addresses() {
                                     <Card className="mt-4">
                                         <CardBody className="p-0">
                                             <h6 className="fw-semibold p-3 mb-0 border-bottom">Pick location on map</h6>
+                                            <div className="px-3 pt-2">
+                                                <small className="text-700">Click anywhere to drop a pin — the address fields fill in automatically and can still be edited.</small>
+                                            </div>
                                             <AddressMap
                                                 addresses={[]}
                                                 selectedAddressId={null}
-                                                onLocationPick={(coordinates) => {
-                                                    setPickedCoords(coordinates);
-                                                    setNotice('Location pinned from the map. Fill details and save.');
-                                                }}
+                                                onLocationPick={handleLocationPick}
                                                 height="300px"
                                                 locateOnLoad
                                             />
@@ -405,10 +416,7 @@ export default function Addresses() {
                                                 <AddressMap
                                                     addresses={addresses}
                                                     selectedAddressId={addresses.find((a) => a.is_default)?.id ?? null}
-                                                    onLocationPick={(coordinates) => {
-                                                        setPickedCoords(coordinates);
-                                                        setNotice('Location picked from the map. Fill details and save.');
-                                                    }}
+                                                    onLocationPick={handleLocationPick}
                                                     height="340px"
                                                     locateOnLoad
                                                 />
