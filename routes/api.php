@@ -16,6 +16,7 @@ use App\Http\Controllers\Api\Payment\TapPaymentsWebhookController;
 use App\Http\Controllers\Api\Restaurant\ReportsController as RestaurantReportsController;
 use App\Http\Controllers\Api\Restaurant\RestaurantMenuController;
 use App\Http\Controllers\Api\Restaurant\RestaurantOrderController;
+use App\Http\Controllers\Api\Restaurant\RestaurantSettingsController;
 use App\Http\Controllers\Api\Restaurant\RestaurantStorefrontController;
 use App\Http\Controllers\Api\Rider\ReportsController as RiderReportsController;
 use App\Http\Controllers\Api\Rider\RiderController;
@@ -70,6 +71,8 @@ Route::middleware('auth:sanctum')->prefix('rider')->name('rider.')->group(functi
 
 // Protected Restaurant reporting routes
 Route::middleware(['auth:sanctum', 'role:restaurant'])->prefix('restaurant')->name('restaurant.')->group(function () {
+    Route::get('/settings', [RestaurantSettingsController::class, 'index'])->name('settings.index');
+    Route::put('/settings/branches/{branch}', [RestaurantSettingsController::class, 'updateBranch'])->name('settings.branches.update');
     Route::get('/orders', [RestaurantOrderController::class, 'index'])->name('orders.index');
     Route::get('/orders/{order}', [RestaurantOrderController::class, 'show'])->name('orders.show');
     Route::get('/orders/{order}/available-riders', [RestaurantOrderController::class, 'availableRiders'])->name('orders.available-riders');
