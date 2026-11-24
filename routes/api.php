@@ -72,6 +72,7 @@ Route::middleware('auth:sanctum')->prefix('rider')->name('rider.')->group(functi
 // Protected Restaurant reporting routes
 Route::middleware(['auth:sanctum', 'role:restaurant'])->prefix('restaurant')->name('restaurant.')->group(function () {
     Route::get('/settings', [RestaurantSettingsController::class, 'index'])->name('settings.index');
+    Route::post('/settings/branches', [RestaurantSettingsController::class, 'storeBranch'])->name('settings.branches.store');
     Route::put('/settings/branches/{branch}', [RestaurantSettingsController::class, 'updateBranch'])->name('settings.branches.update');
     Route::get('/orders', [RestaurantOrderController::class, 'index'])->name('orders.index');
     Route::get('/orders/{order}', [RestaurantOrderController::class, 'show'])->name('orders.show');

@@ -4,6 +4,7 @@ import RestaurantOperationsForm, {
     BranchSettings,
     RestaurantOperationsSettings,
 } from '@/components/forms/RestaurantOperationsForm';
+import AddBranchForm from '@/components/forms/AddBranchForm';
 import { RestaurantLayout } from '@/components/layout/RestaurantLayout';
 import { Card, CardBody } from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
@@ -23,6 +24,21 @@ export default function Settings() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [reloadKey, setReloadKey] = useState(0);
+    const [showAddBranch, setShowAddBranch] = useState(false);
+
+    const handleCreated = (updatedBranch: BranchSettings) => {
+        setSettings((current) => {
+            if (!current) {
+                return current;
+            }
+
+            return {
+                ...current,
+                branches: [...current.branches, updatedBranch],
+            };
+        });
+        setShowAddBranch(false);
+    };
 
     useEffect(() => {
         let cancelled = false;
@@ -93,7 +109,19 @@ export default function Settings() {
                         </CardBody>
                     </Card>
                 ) : settings ? (
-                    <RestaurantOperationsForm settings={settings} onSaved={handleSaved} />
+                    settings.branches.length === 0 ? (
+                        <AddBranchForm onCreated={handleCreated} />
+                    ) : (
+                        <>
+                            <RestaurantOperationsForm settings={settings} onSaved={handleSaved} />
+                            <div className="mt-3">
+                                <Button variant="outline" onClick={() => setShowAddBranch(true)}>
+                                    Add another branch
+                                </Button>
+                                {showAddBranch && <AddBranchForm onCreated={handleCreated} />}
+                            </div>
+                        </>
+                    )
                 ) : null}
             </PageScaffold>
         </RestaurantLayout>

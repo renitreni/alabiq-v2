@@ -7,7 +7,9 @@ import api from '@/lib/axios';
 export interface BranchSettings {
     id: number;
     name: string;
+    slug: string;
     address: string;
+    phone?: string | null;
     is_active: boolean;
     accepts_orders: boolean;
     opens_at: string;

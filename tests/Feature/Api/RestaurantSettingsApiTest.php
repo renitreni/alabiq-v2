@@ -118,6 +118,76 @@ class RestaurantSettingsApiTest extends TestCase
             ]);
     }
 
+    public function test_restaurant_can_create_branch(): void
+    {
+        Sanctum::actingAs($this->owner);
+
+        $this->postJson('/api/restaurant/settings/branches', [
+            'name' => 'Downtown Branch',
+            'slug' => 'downtown-branch',
+            'address' => '123 Main St',
+            'phone' => '+1234567890',
+            'opens_at' => '09:00',
+            'closes_at' => '22:00',
+            'delivery_fee' => 10.00,
+            'minimum_order' => 50,
+            'estimated_delivery_time' => 40,
+            'is_active' => true,
+            'accepts_orders' => true,
+        ])
+            ->assertCreated()
+            ->assertJsonPath('data.name', 'Downtown Branch')
+            ->assertJsonPath('data.slug', 'downtown-branch')
+            ->assertJsonPath('data.address', '123 Main St')
+            ->assertJsonPath('data.phone', '+1234567890')
+            ->assertJsonPath('data.opens_at', '09:00')
+            ->assertJsonPath('data.closes_at', '22:00')
+            ->assertJsonPath('data.delivery_fee', 10)
+            ->assertJsonPath('data.minimum_order', 50)
+            ->assertJsonPath('data.estimated_delivery_time', 40)
+            ->assertJsonPath('data.is_active', true)
+            ->assertJsonPath('data.accepts_orders', true);
+
+        $this->assertDatabaseHas('restaurant_branches', [
+            'restaurant_id' => $this->restaurant->id,
+            'name' => 'Downtown Branch',
+            'slug' => 'downtown-branch',
+            'is_active' => true,
+            'accepts_orders' => true,
+        ]);
+
+        $this->assertDatabaseHas('audit_logs', [
+            'user_id' => $this->owner->id,
+            'action' => 'restaurant.branch_created',
+            'auditable_type' => $this->branch->getMorphClass(),
+        ]);
+    }
+
+    public function test_branch_creation_is_validated(): void
+    {
+        Sanctum::actingAs($this->owner);
+
+        $this->postJson('/api/restaurant/settings/branches', [
+            'name' => '',
+            'address' => '',
+            'opens_at' => '25:00',
+            'closes_at' => 'not-a-time',
+            'delivery_fee' => -1,
+            'minimum_order' => -1,
+            'estimated_delivery_time' => 0,
+        ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors([
+                'name',
+                'address',
+                'opens_at',
+                'closes_at',
+                'delivery_fee',
+                'minimum_order',
+                'estimated_delivery_time',
+            ]);
+    }
+
     public function test_restaurant_cannot_update_another_restaurants_branch(): void
     {
         $otherBranch = RestaurantBranch::factory()->create();

@@ -10,6 +10,7 @@ use App\Services\SettingsService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 
 class RestaurantSettingsController extends Controller
 {
@@ -44,6 +45,66 @@ class RestaurantSettingsController extends Controller
                 ],
             ],
         ]);
+    }
+
+    /**
+     * Create a new branch for the authenticated restaurant.
+     */
+    public function storeBranch(Request $request): JsonResponse
+    {
+        $restaurant = $this->ownedRestaurant($request);
+        abort_if(! $restaurant, 404, 'Restaurant not found');
+
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'slug' => ['nullable', 'string', 'max:255', 'unique:restaurant_branches,slug'],
+            'address' => ['required', 'string', 'max:300'],
+            'phone' => ['nullable', 'string', 'max:30'],
+            'opens_at' => ['nullable', 'date_format:H:i'],
+            'closes_at' => ['nullable', 'date_format:H:i'],
+            'delivery_fee' => ['nullable', 'numeric', 'min:0', 'max:999999.99'],
+            'minimum_order' => ['nullable', 'numeric', 'min:0', 'max:999999.99'],
+            'estimated_delivery_time' => ['nullable', 'integer', 'min:1', 'max:120'],
+            'is_active' => ['nullable', 'boolean'],
+            'accepts_orders' => ['nullable', 'boolean'],
+        ]);
+
+        $slug = $validated['slug'] ?? Str::slug($validated['name']) ?: 'branch';
+        $base = $slug;
+        $suffix = 2;
+
+        while (RestaurantBranch::where('slug', $slug)->exists()) {
+            $slug = "{$base}-{$suffix}";
+            $suffix++;
+        }
+
+        $branch = RestaurantBranch::create([
+            'restaurant_id' => $restaurant->id,
+            'name' => $validated['name'],
+            'slug' => $slug,
+            'address' => $validated['address'],
+            'phone' => $validated['phone'] ?? null,
+            'latitude' => 0.0,
+            'longitude' => 0.0,
+            'opens_at' => $validated['opens_at'] ?? '08:00',
+            'closes_at' => $validated['closes_at'] ?? '23:00',
+            'delivery_fee' => $validated['delivery_fee'] ?? 0,
+            'minimum_order' => $validated['minimum_order'] ?? 0,
+            'estimated_delivery_time' => $validated['estimated_delivery_time'] ?? 30,
+            'is_active' => $request->boolean('is_active', true),
+            'accepts_orders' => $request->boolean('accepts_orders', true),
+        ]);
+
+        $this->auditLogService->record(
+            Auth::user(),
+            'restaurant.branch_created',
+            $branch,
+            [],
+            $this->auditableValues($branch),
+            $request->ip()
+        );
+
+        return response()->json(['data' => $this->branchPayload($branch)], 201);
     }
 
     /**
@@ -98,7 +159,9 @@ class RestaurantSettingsController extends Controller
         return [
             'id' => $branch->id,
             'name' => $branch->name,
+            'slug' => $branch->slug,
             'address' => $branch->address,
+            'phone' => $branch->phone,
             'is_active' => (bool) $branch->is_active,
             'accepts_orders' => (bool) $branch->accepts_orders,
             'opens_at' => $branch->opens_at?->format('H:i') ?? '00:00',
