@@ -32,6 +32,7 @@ export const RestaurantLayout: React.FC<RestaurantLayoutProps> = ({
                         { label: 'Dashboard', href: '/restaurant/dashboard' },
                         { label: 'Orders', href: '/restaurant/orders' },
                         { label: 'Menu', href: '/restaurant/menu' },
+                        { label: 'Settings', href: '/restaurant/settings' },
                         { label: 'Profile', href: '/restaurant/profile' },
                     ]}
                     showCart={false}
