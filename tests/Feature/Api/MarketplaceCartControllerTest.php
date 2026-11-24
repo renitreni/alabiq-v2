@@ -124,4 +124,107 @@ class MarketplaceCartControllerTest extends TestCase
             'quantity' => 0,
         ])->assertUnprocessable();
     }
+
+    public function test_cart_item_key_is_returned_when_adding_and_listing_items(): void
+    {
+        $response = $this->postJson('/api/marketplace/cart', [
+            'menu_item_id' => $this->menuItem->id,
+            'quantity' => 2,
+        ])->assertCreated();
+
+        $itemKey = $response->json('data.items.0.item_key');
+
+        $this->assertIsString($itemKey);
+        $this->getJson('/api/marketplace/cart')
+            ->assertOk()
+            ->assertJsonPath('data.items.0.item_key', $itemKey)
+            ->assertJsonPath('data.items.0.quantity', 2)
+            ->assertJsonPath('data.item_count', 2);
+    }
+
+    public function test_quantity_update_recalculates_cart_totals(): void
+    {
+        $response = $this->postJson('/api/marketplace/cart', [
+            'menu_item_id' => $this->menuItem->id,
+            'quantity' => 2,
+        ])->assertCreated();
+        $itemKey = $response->json('data.items.0.item_key');
+
+        $this->putJson("/api/marketplace/cart/{$itemKey}", ['quantity' => 5])
+            ->assertOk()
+            ->assertJsonPath('data.items.0.item_key', $itemKey)
+            ->assertJsonPath('data.items.0.quantity', 5)
+            ->assertJsonPath('data.item_count', 5)
+            ->assertJsonPath('data.subtotal', 125)
+            ->assertSessionHas("alabiq_cart.items.{$itemKey}.quantity", 5);
+    }
+
+    public function test_quantity_update_rejects_more_than_99_and_preserves_cart(): void
+    {
+        $response = $this->postJson('/api/marketplace/cart', [
+            'menu_item_id' => $this->menuItem->id,
+            'quantity' => 2,
+        ])->assertCreated();
+        $itemKey = $response->json('data.items.0.item_key');
+
+        $this->putJson("/api/marketplace/cart/{$itemKey}", ['quantity' => 100])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['quantity'])
+            ->assertJsonPath('errors.quantity.0', 'The quantity field must not be greater than 99.')
+            ->assertSessionHas("alabiq_cart.items.{$itemKey}.quantity", 2);
+    }
+
+    public function test_removing_item_returns_updated_cart_and_resets_empty_cart(): void
+    {
+        $response = $this->postJson('/api/marketplace/cart', [
+            'menu_item_id' => $this->menuItem->id,
+            'quantity' => 3,
+        ])->assertCreated();
+        $itemKey = $response->json('data.items.0.item_key');
+
+        $this->deleteJson("/api/marketplace/cart/{$itemKey}")
+            ->assertOk()
+            ->assertJsonPath('data.items', [])
+            ->assertJsonPath('data.item_count', 0)
+            ->assertJsonPath('data.subtotal', 0)
+            ->assertSessionHas('alabiq_cart.items', []);
+
+        $this->assertNull(session('alabiq_cart.restaurant_id'));
+        $this->assertNull(session('alabiq_cart.branch_id'));
+    }
+
+    public function test_removing_one_line_preserves_other_items(): void
+    {
+        $otherItem = MenuItem::factory()->create([
+            'restaurant_id' => $this->restaurant->id,
+            'menu_category_id' => $this->menuItem->menu_category_id,
+            'price' => 30.00,
+            'is_available' => true,
+        ]);
+        $firstResponse = $this->postJson('/api/marketplace/cart', [
+            'menu_item_id' => $this->menuItem->id,
+            'quantity' => 1,
+        ])->assertCreated();
+        $firstItemKey = $firstResponse->json('data.items.0.item_key');
+        $this->postJson('/api/marketplace/cart', [
+            'menu_item_id' => $otherItem->id,
+            'quantity' => 2,
+        ])->assertCreated();
+
+        $this->deleteJson("/api/marketplace/cart/{$firstItemKey}")
+            ->assertOk()
+            ->assertJsonCount(1, 'data.items')
+            ->assertJsonPath('data.items.0.menu_item_id', $otherItem->id)
+            ->assertJsonPath('data.items.0.quantity', 2)
+            ->assertJsonPath('data.item_count', 2)
+            ->assertJsonPath('data.subtotal', 60)
+            ->assertSessionMissing("alabiq_cart.items.{$firstItemKey}");
+    }
+
+    public function test_updating_missing_cart_item_returns_400(): void
+    {
+        $this->putJson('/api/marketplace/cart/missing-item', ['quantity' => 2])
+            ->assertStatus(400)
+            ->assertJsonPath('message', 'Item not found in cart');
+    }
 }

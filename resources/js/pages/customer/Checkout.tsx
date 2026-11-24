@@ -20,7 +20,10 @@ interface CheckoutPayload {
     subtotal: number;
     delivery_fee: number;
     total: number;
+    payment_methods?: { cash_on_delivery: boolean; tap_payments: boolean };
 }
+
+type PaymentMethod = 'cash_on_delivery' | 'tap_payments';
 
 interface CustomerAddress {
     id: number;
@@ -38,6 +41,8 @@ export default function Checkout() {
     const [checkout, setCheckout] = useState<CheckoutPayload | null>(null);
     const [addresses, setAddresses] = useState<CustomerAddress[]>([]);
     const [selectedAddressId, setSelectedAddressId] = useState<number | ''>('');
+    const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash_on_delivery');
+    const [unavailableReason, setUnavailableReason] = useState<string | null>(null);
     const [instructions, setInstructions] = useState('');
     const [loading, setLoading] = useState(true);
     const [placing, setPlacing] = useState(false);
@@ -50,12 +55,22 @@ export default function Checkout() {
             setError(null);
 
             try {
-                const [{ data: checkoutData }, { data: addressData }] = await Promise.all([
-                    api.get('/marketplace/cart/checkout'),
+                const [checkoutResult, { data: addressData }] = await Promise.all([
+                    api.get('/marketplace/cart/validate').catch((e: any) => {
+                        if (e?.response?.status === 400) {
+                            setUnavailableReason(e.response.data?.message ?? null);
+                            return null;
+                        }
+                        throw e;
+                    }),
                     api.get('/customer/addresses'),
                 ]);
 
-                setCheckout(checkoutData?.data ?? null);
+                const payload: CheckoutPayload | null = checkoutResult?.data?.data ?? null;
+                setCheckout(payload);
+                if (payload?.payment_methods && !payload.payment_methods.cash_on_delivery && payload.payment_methods.tap_payments) {
+                    setPaymentMethod('tap_payments');
+                }
                 const savedAddresses = addressData?.data ?? [];
                 setAddresses(savedAddresses);
                 setSelectedAddressId(savedAddresses.find((address: CustomerAddress) => address.is_default)?.id ?? savedAddresses[0]?.id ?? '');
@@ -83,11 +98,23 @@ export default function Checkout() {
         try {
             const { data } = await api.post('/orders/checkout', {
                 customer_address_id: selectedAddressId,
-                payment_method: 'cash_on_delivery',
+                payment_method: paymentMethod,
                 delivery_instructions: instructions || undefined,
             });
 
-            setPlacedOrderId(data?.data?.id ?? null);
+            const orderId: number | null = data?.data?.id ?? null;
+            setPlacedOrderId(orderId);
+
+            if (paymentMethod === 'tap_payments' && orderId) {
+                const { data: payment } = await api.post(`/payments/orders/${orderId}/initiate`);
+                const paymentUrl = payment?.data?.payment_url;
+
+                if (paymentUrl) {
+                    window.location.href = paymentUrl;
+                } else {
+                    setError('Your order was created, but we could not open the payment page. Open the order to retry payment.');
+                }
+            }
         } catch (e: any) {
             setError(e?.response?.data?.message ?? 'Could not place your order. Please try again.');
         } finally {
@@ -100,7 +127,7 @@ export default function Checkout() {
             <PageScaffold
                 eyebrow="Checkout"
                 title="Confirm Your Order"
-                description="Choose a saved delivery address and place a cash-on-delivery order."
+                description="Choose a saved delivery address and payment method to place your order."
             >
                 {error && <div className="alert alert-danger">{error}</div>}
                 {placedOrderId && (
@@ -161,6 +188,30 @@ export default function Checkout() {
                                             placeholder="Optional instructions for the restaurant or rider"
                                         />
                                     </div>
+
+                                    <h2 className="fs-5 fw-bold text-1000 mb-3">Payment Method</h2>
+                                    <div className="list-group">
+                                        {([
+                                            ['cash_on_delivery', 'Cash on delivery', 'Pay the rider when your order arrives.'],
+                                            ['tap_payments', 'Pay online (Tap)', 'Pay securely by card now.'],
+                                        ] as [PaymentMethod, string, string][])
+                                            .filter(([method]) => checkout.payment_methods?.[method] ?? method === 'cash_on_delivery')
+                                            .map(([method, title, hint]) => (
+                                                <label key={method} className="list-group-item d-flex gap-2">
+                                                    <input
+                                                        type="radio"
+                                                        name="payment_method"
+                                                        className="form-check-input mt-1"
+                                                        checked={paymentMethod === method}
+                                                        onChange={() => setPaymentMethod(method)}
+                                                    />
+                                                    <span>
+                                                        <span className="fw-semibold text-1000 d-block">{title}</span>
+                                                        <span className="small text-700">{hint}</span>
+                                                    </span>
+                                                </label>
+                                            ))}
+                                    </div>
                                 </CardBody>
                             </Card>
                         </div>
@@ -195,7 +246,7 @@ export default function Checkout() {
                                         <span>{money(checkout.total)}</span>
                                     </div>
                                     <Button type="submit" variant="primary" className="w-100" loading={placing} disabled={!addresses.length || !!placedOrderId}>
-                                        {placedOrderId ? 'Order Placed' : 'Place Order'}
+                                        {placedOrderId ? 'Order Placed' : paymentMethod === 'tap_payments' ? 'Place Order & Pay' : 'Place Order'}
                                     </Button>
                                 </CardBody>
                             </Card>
@@ -204,7 +255,7 @@ export default function Checkout() {
                 ) : (
                     <EmptyState
                         title="Checkout is unavailable"
-                        description="Your cart is empty or the selected branch is not currently accepting orders."
+                        description={unavailableReason ?? 'Your cart is empty or the selected branch is not currently accepting orders.'}
                         action={<Button variant="primary" size="sm" as="a" href="/customer/cart">Review Cart</Button>}
                     />
                 )}

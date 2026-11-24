@@ -1,9 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { usePage } from '@inertiajs/react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Link, usePage } from '@inertiajs/react';
+import axios from 'axios';
 import api from '@/lib/axios';
 import { GuestLayout } from '@/components/layout/GuestLayout';
-import { Card, CardBody } from '@/components/ui/Card';
-import Button from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
 
 interface MenuItem {
@@ -19,6 +18,7 @@ interface MenuItem {
 interface MenuCategory {
     id: string;
     name: string;
+    image?: string | null;
     items: MenuItem[];
 }
 
@@ -46,7 +46,7 @@ interface RestaurantData {
     district?: string | null;
     city?: string | null;
     estimated_delivery_time: number;
-    cuisines: Array<{ id: string; name: string }>;
+    cuisines: Array<{ id: string; name: string; icon?: string | null }>;
 }
 
 interface PageProps {
@@ -55,23 +55,55 @@ interface PageProps {
     categories: MenuCategory[];
 }
 
-const money = (value: number | null | undefined) => `${Number(value || 0).toFixed(2)} SAR`;
+interface CartItem {
+    item_key: string;
+    menu_item_id: number;
+    name: string;
+    final_price: number;
+    quantity: number;
+    image?: string | null;
+    category?: string | null;
+}
+
+interface CartPayload {
+    items: CartItem[];
+    item_count: number;
+    subtotal: number;
+}
+
+const emptyCart: CartPayload = { items: [], item_count: 0, subtotal: 0 };
+const fallbackFoodImage = 'https://images.unsplash.com/photo-1571091718767-18b5b1457add?w=900&h=650&fit=crop';
+const money = (value: number | null | undefined) => `${Number(value ?? 0).toFixed(2)} SAR`;
+const categoryEmoji = (name: string) => {
+    const category = name.toLowerCase();
+
+    if (category.includes('pizza')) return '🍕';
+    if (category.includes('burger')) return '🍔';
+    if (category.includes('drink') || category.includes('juice')) return '🥤';
+    if (category.includes('dessert') || category.includes('ice')) return '🍨';
+    if (category.includes('salad')) return '🥗';
+    if (category.includes('pasta')) return '🍝';
+    if (category.includes('sandwich') || category.includes('wrap')) return '🥪';
+
+    return '🍽️';
+};
 
 export default function RestaurantShow() {
     const { restaurant, branch, categories } = usePage().props as unknown as PageProps;
-    const menuSection = useRef<HTMLHeadingElement>(null);
-    const [cart, setCart] = useState({ item_count: 0, subtotal: 0 });
-    const [added, setAdded] = useState<number | null>(null);
+    const menuSection = useRef<HTMLDivElement>(null);
+    const [cart, setCart] = useState<CartPayload>(emptyCart);
+    const [selectedQuantities, setSelectedQuantities] = useState<Record<number, number>>({});
+    const [activeCategoryId, setActiveCategoryId] = useState<string>(categories[0]?.id ?? 'all');
+    const [favorites, setFavorites] = useState<number[]>([]);
+    const [adding, setAdding] = useState<number | null>(null);
+    const [pendingItemKey, setPendingItemKey] = useState<string | null>(null);
+    const [cartError, setCartError] = useState<string | null>(null);
 
     useEffect(() => {
         const loadCart = async () => {
             try {
                 const { data } = await api.get('/marketplace/cart');
-                const cartData = data?.data ?? data ?? {};
-                setCart({
-                    item_count: cartData.item_count ?? 0,
-                    subtotal: cartData.subtotal ?? 0,
-                });
+                setCart(data?.data ?? emptyCart);
             } catch (error) {
                 console.error('Failed to load cart', error);
             }
@@ -80,207 +112,385 @@ export default function RestaurantShow() {
         loadCart();
     }, []);
 
-    const addToCart = useCallback(
-        async (menuItemId: number) => {
-            setAdded(menuItemId);
+    const addToCart = useCallback(async (menuItemId: number, quantity: number) => {
+        setAdding(menuItemId);
+        setCartError(null);
 
-            try {
-                const { data } = await api.post('/marketplace/cart', {
-                    menu_item_id: menuItemId,
-                    quantity: 1,
-                });
+        try {
+            const { data } = await api.post('/marketplace/cart', {
+                menu_item_id: menuItemId,
+                quantity,
+            });
 
-                const cartData = data.data ?? data;
-                setCart({
-                    item_count: cartData.item_count ?? 0,
-                    subtotal: cartData.subtotal ?? 0,
-                });
+            setCart(data.data ?? emptyCart);
+            setSelectedQuantities((current) => ({ ...current, [menuItemId]: 1 }));
+        } catch (error) {
+            setCartError(
+                axios.isAxiosError<{ message?: string }>(error)
+                    ? error.response?.data?.message ?? 'Could not add this item to your cart.'
+                    : 'Could not add this item to your cart.'
+            );
+        } finally {
+            setAdding(null);
+        }
+    }, []);
 
-                setTimeout(() => setAdded(null), 1200);
-            } catch (error) {
-                setAdded(null);
-                console.error('Failed to add item to cart', error);
-            }
-        },
-        []
+    const setSelectedQuantity = (menuItemId: number, quantity: number) => {
+        setSelectedQuantities((current) => ({
+            ...current,
+            [menuItemId]: Math.min(99, Math.max(1, quantity)),
+        }));
+    };
+
+    const updateCartQuantity = useCallback(async (item: CartItem, quantity: number) => {
+        if (pendingItemKey || quantity < 0 || quantity > 99) return;
+
+        setPendingItemKey(item.item_key);
+        setCartError(null);
+
+        try {
+            const { data } = await api.put(`/marketplace/cart/${encodeURIComponent(item.item_key)}`, { quantity });
+            setCart(data.data ?? emptyCart);
+        } catch (error) {
+            setCartError(
+                axios.isAxiosError<{ message?: string }>(error)
+                    ? error.response?.data?.message ?? 'Could not update your order. Please try again.'
+                    : 'Could not update your order. Please try again.'
+            );
+        } finally {
+            setPendingItemKey(null);
+        }
+    }, [pendingItemKey]);
+
+    const cartQuantities = useMemo(
+        () => cart.items.reduce<Record<number, number>>((quantities, item) => {
+            quantities[item.menu_item_id] = (quantities[item.menu_item_id] ?? 0) + item.quantity;
+            return quantities;
+        }, {}),
+        [cart.items]
     );
-
-    const deliveryFee = branch?.delivery_fee ?? 0;
-    const total = cart.subtotal + deliveryFee;
+    const activeCategory = categories.find((category) => category.id === activeCategoryId);
+    const visibleCategories = activeCategoryId === 'all'
+        ? categories
+        : categories.filter((category) => category.id === activeCategoryId);
+    const visibleItems = visibleCategories.flatMap((category) =>
+        category.items.map((item) => ({ item, categoryName: category.name }))
+    );
+    const deliveryFee = Number(branch?.delivery_fee ?? 0);
+    const subtotal = Number(cart.subtotal ?? 0);
+    const total = subtotal + deliveryFee;
     const hasItems = cart.item_count > 0;
+    const estimatedTime = branch?.estimated_delivery_time ?? restaurant.estimated_delivery_time;
+    const menuHeading = activeCategoryId === 'all'
+        ? 'Explore the full menu'
+        : `Choose your ${activeCategory?.name.toLowerCase() ?? 'favorites'}`;
+
+    const toggleFavorite = (menuItemId: number) => {
+        setFavorites((current) => current.includes(menuItemId)
+            ? current.filter((id) => id !== menuItemId)
+            : [...current, menuItemId]
+        );
+    };
 
     return (
         <GuestLayout title={`${restaurant.name} - Alabiq`} description={restaurant.description}>
-            <div className="container px-4 py-4">
-                <div className="row mb-4">
-                    <div className="col-12">
-                        <Card variant="outlined" className="overflow-hidden">
-                            <div className="row g-0">
-                                <div className="col-md-4">
-                                    <img
-                                        src={restaurant.cover_image ?? 'https://images.unsplash.com/photo-1571091718767-18b5b1457add?w=400&h=300&fit=crop'}
-                                        alt={restaurant.name}
-                                        className="w-100 h-100"
-                                        style={{ objectFit: 'cover' }}
-                                    />
-                                </div>
-                                <div className="col-md-8">
-                                    <div className="p-4 h-100 d-flex flex-column justify-content-between">
-                                        <div>
-                                            <div className="d-flex flex-wrap gap-2 mb-2">
-                                                {restaurant.cuisines.map((cuisine) => (
-                                                    <span key={cuisine.id} className="badge bg-soft-primary text-primary">
-                                                        {cuisine.name}
-                                                    </span>
-                                                ))}
-                                                {branch && (
-                                                    <>
-                                                        <span className={`badge bg-${branch.is_open ? 'success' : 'danger'}`}>
-                                                            {branch.is_open ? 'Open now' : 'Closed'}
-                                                        </span>
-                                                        <span className="badge bg-light text-dark">⏱ {branch.estimated_delivery_time ?? restaurant.estimated_delivery_time} min</span>
-                                                        <span className="badge bg-light text-dark">🚚 {money(branch.delivery_fee)} delivery</span>
-                                                    </>
-                                                )}
-                                            </div>
-                                            <h1 className="fw-bold text-1000 mb-2">{restaurant.name}</h1>
-                                            {branch?.address && (
-                                                <div className="d-flex flex-wrap gap-3 text-700 small mb-3">
-                                                    <span>📍 {branch.address}</span>
-                                                </div>
-                                            )}
-                                            <p className="text-700">{restaurant.description || 'No description available.'}</p>
-                                        </div>
-                                        <div className="d-flex gap-2 flex-wrap">
-                                            <Button variant="primary" size="lg" className="flex-1" as="a" href="/customer/cart">
-                                                Order Now
-                                            </Button>
-                                            <Button
-                                                variant="outline"
-                                                size="lg"
-                                                onClick={() => menuSection.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+            <div className="restaurant-show">
+                <div className="restaurant-show__shell">
+                    <header className="restaurant-show__restaurant">
+                        <div className="restaurant-show__identity">
+                            <div className="restaurant-show__logo">
+                                {restaurant.logo ? (
+                                    <img src={restaurant.logo} alt="" />
+                                ) : (
+                                    <i className="fa-solid fa-utensils" aria-hidden="true" />
+                                )}
+                            </div>
+                            <div>
+                                <span className="restaurant-show__eyebrow">Order from</span>
+                                <h1>{restaurant.name}</h1>
+                            </div>
+                        </div>
+                        <div className="restaurant-show__restaurant-meta">
+                            {branch && (
+                                <span className={`restaurant-show__status ${branch.is_open ? 'is-open' : 'is-closed'}`}>
+                                    <span aria-hidden="true" />
+                                    {branch.is_open ? 'Open now' : 'Currently closed'}
+                                </span>
+                            )}
+                            <button
+                                type="button"
+                                className="restaurant-show__menu-link"
+                                onClick={() => menuSection.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                            >
+                                View menu <i className="fa-solid fa-arrow-down" aria-hidden="true" />
+                            </button>
+                        </div>
+                    </header>
+
+                    {cartError && (
+                        <div className="restaurant-show__alert" role="alert">
+                            <i className="fa-solid fa-circle-exclamation" aria-hidden="true" />
+                            <span>{cartError}</span>
+                            <button type="button" onClick={() => setCartError(null)} aria-label="Dismiss cart error">
+                                <i className="fa-solid fa-xmark" aria-hidden="true" />
+                            </button>
+                        </div>
+                    )}
+
+                    {categories.length ? (
+                        <div className="restaurant-show__layout">
+                            <div className="restaurant-show__content">
+                                <div className="restaurant-show__categories" role="tablist" aria-label="Menu categories">
+                                    {categories.map((category) => {
+                                        const isActive = activeCategoryId === category.id;
+
+                                        return (
+                                            <button
+                                                key={category.id}
+                                                type="button"
+                                                role="tab"
+                                                aria-selected={isActive}
+                                                className={`restaurant-show__category ${isActive ? 'is-active' : ''}`}
+                                                onClick={() => setActiveCategoryId(category.id)}
                                             >
-                                                View Menu
-                                            </Button>
-                                        </div>
+                                                <span className="restaurant-show__category-image">
+                                                    {category.image ? (
+                                                        <img src={category.image} alt="" />
+                                                    ) : (
+                                                        <span role="img" aria-hidden="true">{categoryEmoji(category.name)}</span>
+                                                    )}
+                                                </span>
+                                                <span>{category.name}</span>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+
+                                <div className="restaurant-show__menu-heading" ref={menuSection}>
+                                    <div>
+                                        <span className="restaurant-show__eyebrow">Freshly made for you</span>
+                                        <h2>{menuHeading}</h2>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        className={activeCategoryId === 'all' ? 'is-active' : ''}
+                                        onClick={() => setActiveCategoryId('all')}
+                                    >
+                                        See all <i className="fa-solid fa-arrow-right" aria-hidden="true" />
+                                    </button>
+                                </div>
+
+                                <div className="restaurant-show__food-grid" role="tabpanel">
+                                    {visibleItems.map(({ item, categoryName }, index) => {
+                                        const selectedQuantity = selectedQuantities[item.id] ?? 1;
+                                        const quantityInCart = cartQuantities[item.id] ?? 0;
+                                        const isFavorite = favorites.includes(item.id);
+                                        const tags = [...new Set([
+                                            categoryName,
+                                            ...restaurant.cuisines.map((cuisine) => cuisine.name),
+                                        ])].slice(0, 3);
+
+                                        return (
+                                            <article
+                                                key={item.id}
+                                                className="restaurant-show__food-card"
+                                                style={{ animationDelay: `${Math.min(index, 8) * 55}ms` }}
+                                            >
+                                                <div className="restaurant-show__food-image">
+                                                    <img
+                                                        src={item.image ?? restaurant.cover_image ?? fallbackFoodImage}
+                                                        alt={item.name}
+                                                        loading="lazy"
+                                                    />
+                                                    <span className="restaurant-show__food-category">
+                                                        <i className="fa-solid fa-star" aria-hidden="true" /> {categoryName}
+                                                    </span>
+                                                    <button
+                                                        type="button"
+                                                        className={`restaurant-show__favorite ${isFavorite ? 'is-active' : ''}`}
+                                                        aria-label={`${isFavorite ? 'Remove' : 'Add'} ${item.name} ${isFavorite ? 'from' : 'to'} favorites`}
+                                                        aria-pressed={isFavorite}
+                                                        onClick={() => toggleFavorite(item.id)}
+                                                    >
+                                                        <i className={`fa-${isFavorite ? 'solid' : 'regular'} fa-heart`} aria-hidden="true" />
+                                                    </button>
+                                                    {quantityInCart > 0 && (
+                                                        <span className="restaurant-show__in-cart">{quantityInCart} in your order</span>
+                                                    )}
+                                                </div>
+
+                                                <div className="restaurant-show__food-body">
+                                                    <div className="restaurant-show__food-title">
+                                                        <h3>
+                                                            {item.name}
+                                                            <i className="fa-solid fa-circle-check" title="Available to order" aria-label="Available to order" />
+                                                        </h3>
+                                                        <strong>{money(item.branch_price ?? item.price)}</strong>
+                                                    </div>
+                                                    {item.description && <p>{item.description}</p>}
+                                                    <div className="restaurant-show__food-meta">
+                                                        <span>
+                                                            <i className="fa-solid fa-motorcycle" aria-hidden="true" />
+                                                            {deliveryFee === 0 ? 'Free delivery' : `${money(deliveryFee)} delivery`}
+                                                        </span>
+                                                        <span>
+                                                            <i className="fa-regular fa-clock" aria-hidden="true" />
+                                                            {estimatedTime}–{estimatedTime + 5} mins
+                                                        </span>
+                                                    </div>
+                                                    <div className="restaurant-show__tags">
+                                                        {tags.map((tag) => <span key={tag}>{tag}</span>)}
+                                                    </div>
+                                                    <div className="restaurant-show__food-actions">
+                                                        <div className="restaurant-show__quantity" aria-label={`Quantity for ${item.name}`}>
+                                                            <button
+                                                                type="button"
+                                                                aria-label={`Decrease ${item.name} quantity`}
+                                                                disabled={selectedQuantity <= 1 || adding !== null}
+                                                                onClick={() => setSelectedQuantity(item.id, selectedQuantity - 1)}
+                                                            >
+                                                                <i className="fa-solid fa-minus" aria-hidden="true" />
+                                                            </button>
+                                                            <span aria-live="polite">{selectedQuantity}</span>
+                                                            <button
+                                                                type="button"
+                                                                aria-label={`Increase ${item.name} quantity`}
+                                                                disabled={selectedQuantity >= 99 || adding !== null}
+                                                                onClick={() => setSelectedQuantity(item.id, selectedQuantity + 1)}
+                                                            >
+                                                                <i className="fa-solid fa-plus" aria-hidden="true" />
+                                                            </button>
+                                                        </div>
+                                                        <button
+                                                            type="button"
+                                                            className="restaurant-show__add"
+                                                            disabled={adding !== null}
+                                                            aria-busy={adding === item.id}
+                                                            onClick={() => addToCart(item.id, selectedQuantity)}
+                                                        >
+                                                            {adding === item.id ? (
+                                                                <span className="spinner-border spinner-border-sm" role="status" aria-label="Adding to order" />
+                                                            ) : (
+                                                                <>Add <i className="fa-solid fa-plus" aria-hidden="true" /></>
+                                                            )}
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </article>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+
+                            <aside className="restaurant-show__order" aria-label="Current order">
+                                <div className="restaurant-show__order-heading">
+                                    <div>
+                                        <span>Current Order</span>
+                                        <strong>{branch?.name ?? restaurant.name}</strong>
+                                    </div>
+                                    <div>
+                                        <span>Items</span>
+                                        <strong>{cart.item_count}</strong>
                                     </div>
                                 </div>
-                            </div>
-                        </Card>
-                    </div>
-                </div>
 
-                {categories.length ? (
-                    <div className="row">
-                        <div className="col-lg-8">
-                            <div className="mb-4">
-                                <h3 className="fw-bold mb-3" ref={menuSection}>
-                                    Menu
-                                </h3>
-                                <div className="row g-4">
-                                    {categories.flatMap((category) =>
-                                        category.items.map((item) => (
-                                            <div key={item.id} className="col-md-6">
-                                                <Card variant="outlined" hoverable>
-                                                    <CardBody className="d-flex gap-3">
-                                                        {item.image && (
-                                                            <img
-                                                                src={item.image}
-                                                                alt=""
-                                                                className="rounded"
-                                                                style={{ width: 80, height: 80, objectFit: 'cover', flexShrink: 0 }}
-                                                            />
-                                                        )}
-                                                        <div className="flex-1 d-flex flex-column">
-                                                            <div className="d-flex justify-content-between align-items-start mb-1">
-                                                                <h6 className="fw-bold mb-0">{item.name}</h6>
-                                                                <span className="fw-bold text-primary">{money(item.branch_price ?? item.price)}</span>
-                                                            </div>
-                                                            {item.description && (
-                                                                <p className="text-700 small mb-2">{item.description}</p>
-                                                            )}
-                                                            <Button
-                                                                variant="outline"
-                                                                size="sm"
-                                                                loading={added === item.id}
-                                                                disabled={added === item.id}
-                                                                onClick={() => addToCart(item.id)}
-                                                            >
-                                                                {added === item.id ? 'Adding…' : 'Add'}
-                                                            </Button>
-                                                        </div>
-                                                    </CardBody>
-                                                </Card>
-                                            </div>
-                                        ))
-                                    )}
+                                <div className="restaurant-show__order-modes">
+                                    <span className="is-active"><i className="fa-solid fa-motorcycle" aria-hidden="true" /> Delivery</span>
+                                    <span><i className="fa-regular fa-clock" aria-hidden="true" /> {estimatedTime} mins</span>
                                 </div>
-                            </div>
+
+                                <div className="restaurant-show__order-title">
+                                    <h2>My Orders</h2>
+                                    {hasItems && <span>{cart.item_count} item{cart.item_count === 1 ? '' : 's'}</span>}
+                                </div>
+
+                                {hasItems ? (
+                                    <div className="restaurant-show__order-list">
+                                        {cart.items.map((item) => (
+                                            <div
+                                                key={item.item_key}
+                                                className="restaurant-show__order-item"
+                                                aria-busy={pendingItemKey === item.item_key}
+                                            >
+                                                <img src={item.image ?? fallbackFoodImage} alt={item.name} />
+                                                <div className="restaurant-show__order-item-details">
+                                                    <div>
+                                                        <h3>{item.name}</h3>
+                                                        <button
+                                                            type="button"
+                                                            aria-label={`Remove ${item.name} from order`}
+                                                            disabled={pendingItemKey !== null}
+                                                            onClick={() => updateCartQuantity(item, 0)}
+                                                        >
+                                                            <i className="fa-regular fa-trash-can" aria-hidden="true" />
+                                                        </button>
+                                                    </div>
+                                                    {item.category && <span>{item.category}</span>}
+                                                    <div className="restaurant-show__order-item-bottom">
+                                                        <div className="restaurant-show__quantity is-small">
+                                                            <button
+                                                                type="button"
+                                                                aria-label={`Decrease ${item.name} quantity`}
+                                                                disabled={pendingItemKey !== null}
+                                                                onClick={() => updateCartQuantity(item, item.quantity - 1)}
+                                                            >
+                                                                <i className="fa-solid fa-minus" aria-hidden="true" />
+                                                            </button>
+                                                            <span aria-live="polite">{item.quantity}</span>
+                                                            <button
+                                                                type="button"
+                                                                aria-label={`Increase ${item.name} quantity`}
+                                                                disabled={pendingItemKey !== null || item.quantity >= 99}
+                                                                onClick={() => updateCartQuantity(item, item.quantity + 1)}
+                                                            >
+                                                                <i className="fa-solid fa-plus" aria-hidden="true" />
+                                                            </button>
+                                                        </div>
+                                                        <strong>{money(item.final_price * item.quantity)}</strong>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="restaurant-show__empty-order">
+                                        <div><i className="fa-solid fa-bag-shopping" aria-hidden="true" /></div>
+                                        <h3>Your order is empty</h3>
+                                        <p>Add something delicious from the menu and it will appear here.</p>
+                                    </div>
+                                )}
+
+                                <div className="restaurant-show__summary">
+                                    <div><span>Subtotal</span><strong>{money(subtotal)}</strong></div>
+                                    <div>
+                                        <span>Delivery fee</span>
+                                        <strong>{deliveryFee === 0 ? 'Free' : money(deliveryFee)}</strong>
+                                    </div>
+                                    <div className="restaurant-show__total"><span>Total</span><strong>{money(total)}</strong></div>
+                                </div>
+
+                                {hasItems ? (
+                                    <Link href="/customer/cart" className="restaurant-show__checkout">
+                                        Continue to checkout <i className="fa-solid fa-arrow-right" aria-hidden="true" />
+                                    </Link>
+                                ) : (
+                                    <button type="button" className="restaurant-show__checkout" disabled>
+                                        Continue to checkout <i className="fa-solid fa-arrow-right" aria-hidden="true" />
+                                    </button>
+                                )}
+                                <span className="restaurant-show__secure">
+                                    <i className="fa-solid fa-shield-halved" aria-hidden="true" /> Secure checkout, made simple
+                                </span>
+                            </aside>
                         </div>
-                        <div className="col-lg-4">
-                            <Card variant="outlined" className="sticky-top" style={{ top: 100 }}>
-                                <CardBody>
-                                    <h5 className="fw-bold mb-3">Your Order</h5>
-                                    {hasItems ? (
-                                        <>
-                                            <div className="mb-3 p-3 bg-100 rounded text-center text-500">
-                                                {cart.item_count} item{cart.item_count !== 1 ? 's' : ''} in your cart
-                                            </div>
-                                            <div className="border-top pt-3">
-                                                <div className="d-flex justify-content-between mb-2">
-                                                    <span className="text-700">Subtotal</span>
-                                                    <span className="fw-bold">{money(cart.subtotal)}</span>
-                                                </div>
-                                                <div className="d-flex justify-content-between mb-2">
-                                                    <span className="text-700">Delivery Fee</span>
-                                                    <span className="fw-bold">{money(deliveryFee)}</span>
-                                                </div>
-                                                <hr />
-                                                <div className="d-flex justify-content-between mb-3">
-                                                    <span className="fw-bold">Total</span>
-                                                    <span className="fw-bold text-primary fs-5">{money(total)}</span>
-                                                </div>
-                                                <Button variant="primary" className="w-100" as="a" href="/customer/cart">
-                                                    Proceed to Checkout
-                                                </Button>
-                                            </div>
-                                        </>
-                                    ) : (
-                                        <>
-                                        <div className="mb-3 p-3 bg-100 rounded text-center text-500">
-                                            Your cart is empty
-                                        </div>
-                                        <div className="border-top pt-3">
-                                            <div className="d-flex justify-content-between mb-2">
-                                                <span className="text-700">Subtotal</span>
-                                                <span className="fw-bold">0 SAR</span>
-                                            </div>
-                                            <div className="d-flex justify-content-between mb-2">
-                                                <span className="text-700">Delivery Fee</span>
-                                                <span className="fw-bold">{money(deliveryFee)}</span>
-                                            </div>
-                                            <hr />
-                                            <div className="d-flex justify-content-between mb-3">
-                                                <span className="fw-bold">Total</span>
-                                                <span className="fw-bold text-primary fs-5">{money(total)}</span>
-                                            </div>
-                                            <Button variant="primary" className="w-100" disabled>
-                                                Proceed to Checkout
-                                            </Button>
-                                        </div>
-                                        </>
-                                    )}
-                                </CardBody>
-                            </Card>
-                        </div>
-                    </div>
-                ) : (
-                    <EmptyState
-                        title="No menu items available"
-                        description="This restaurant has no items to order at the moment."
-                        icon="🚫"
-                    />
-                )}
+                    ) : (
+                        <EmptyState
+                            title="No menu items available"
+                            description="This restaurant has no items to order at the moment."
+                            icon="🚫"
+                        />
+                    )}
+                </div>
             </div>
         </GuestLayout>
     );

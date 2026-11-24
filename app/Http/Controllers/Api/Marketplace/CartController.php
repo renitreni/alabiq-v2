@@ -18,13 +18,7 @@ class CartController extends Controller
         $cart = $this->cartService->getCart();
 
         return response()->json([
-            'data' => [
-                'restaurant_id' => $cart['restaurant_id'],
-                'branch_id' => $cart['branch_id'],
-                'items' => array_values($cart['items']),
-                'subtotal' => $cart['subtotal'],
-                'item_count' => $this->cartService->getItemCount(),
-            ],
+            'data' => $this->cartPayload($cart),
         ]);
     }
 
@@ -46,13 +40,7 @@ class CartController extends Controller
             );
 
             return response()->json([
-                'data' => [
-                    'restaurant_id' => $cart['restaurant_id'],
-                    'branch_id' => $cart['branch_id'],
-                    'items' => array_values($cart['items']),
-                    'subtotal' => $cart['subtotal'],
-                    'item_count' => $this->cartService->getItemCount(),
-                ],
+                'data' => $this->cartPayload($cart),
                 'message' => 'Item added to cart',
             ], 201);
         } catch (\Exception $e) {
@@ -72,13 +60,7 @@ class CartController extends Controller
             $cart = $this->cartService->updateQuantity($itemKey, $request->integer('quantity'));
 
             return response()->json([
-                'data' => [
-                    'restaurant_id' => $cart['restaurant_id'],
-                    'branch_id' => $cart['branch_id'],
-                    'items' => array_values($cart['items']),
-                    'subtotal' => $cart['subtotal'],
-                    'item_count' => $this->cartService->getItemCount(),
-                ],
+                'data' => $this->cartPayload($cart),
                 'message' => 'Cart updated',
             ]);
         } catch (\Exception $e) {
@@ -93,13 +75,7 @@ class CartController extends Controller
         $cart = $this->cartService->removeItem($itemKey);
 
         return response()->json([
-            'data' => [
-                'restaurant_id' => $cart['restaurant_id'],
-                'branch_id' => $cart['branch_id'],
-                'items' => array_values($cart['items']),
-                'subtotal' => $cart['subtotal'],
-                'item_count' => $this->cartService->getItemCount(),
-            ],
+            'data' => $this->cartPayload($cart),
             'message' => 'Item removed from cart',
         ]);
     }
@@ -123,13 +99,7 @@ class CartController extends Controller
             $cart = $this->cartService->setBranch($request->integer('branch_id'));
 
             return response()->json([
-                'data' => [
-                    'restaurant_id' => $cart['restaurant_id'],
-                    'branch_id' => $cart['branch_id'],
-                    'items' => array_values($cart['items']),
-                    'subtotal' => $cart['subtotal'],
-                    'item_count' => $this->cartService->getItemCount(),
-                ],
+                'data' => $this->cartPayload($cart),
                 'message' => 'Branch updated',
             ]);
         } catch (\Exception $e) {
@@ -137,6 +107,27 @@ class CartController extends Controller
                 'message' => $e->getMessage(),
             ], 400);
         }
+    }
+
+    /**
+     * @param  array{restaurant_id: int|null, branch_id: int|null, items: array<string, array<string, mixed>>, subtotal: float}  $cart
+     * @return array{restaurant_id: int|null, branch_id: int|null, items: array<int, array<string, mixed>>, subtotal: float, item_count: int}
+     */
+    private function cartPayload(array $cart): array
+    {
+        $items = [];
+
+        foreach ($cart['items'] as $itemKey => $item) {
+            $items[] = array_merge($item, ['item_key' => (string) $itemKey]);
+        }
+
+        return [
+            'restaurant_id' => $cart['restaurant_id'],
+            'branch_id' => $cart['branch_id'],
+            'items' => $items,
+            'subtotal' => $cart['subtotal'],
+            'item_count' => $this->cartService->getItemCount(),
+        ];
     }
 
     public function validateCheckout(): JsonResponse

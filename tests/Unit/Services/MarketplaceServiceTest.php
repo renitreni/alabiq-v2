@@ -89,6 +89,8 @@ class MarketplaceServiceTest extends TestCase
         $this->assertNotNull($data);
         $this->assertEquals('Test Restaurant', $data['restaurant']['name']);
         $this->assertEquals($this->branch->id, $data['branch']['id']);
+        $this->assertSame(10.0, $data['branch']['delivery_fee']);
+        $this->assertSame(20.0, $data['branch']['minimum_order']);
         $this->assertCount(1, $data['categories']);
         $this->assertEquals('Cheeseburger', $data['categories'][0]['items'][0]->name);
     }

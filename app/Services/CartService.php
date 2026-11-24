@@ -266,6 +266,10 @@ class CartService
             'subtotal' => $cart['subtotal'],
             'delivery_fee' => $deliveryFee,
             'total' => $cart['subtotal'] + $deliveryFee,
+            'payment_methods' => [
+                'cash_on_delivery' => (bool) app(SettingsService::class)->get('cod_enabled', config('alabiq.cod_enabled')),
+                'tap_payments' => (bool) app(SettingsService::class)->get('online_payments_enabled', config('alabiq.online_payments_enabled')),
+            ],
         ];
     }
 

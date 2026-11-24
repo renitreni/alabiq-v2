@@ -17,6 +17,7 @@ export interface BranchSettings {
     delivery_fee: number;
     minimum_order: number;
     estimated_delivery_time: number;
+    delivery_radius_km: number | null;
     is_open: boolean;
 }
 
@@ -41,6 +42,7 @@ interface BranchSettingsFormValues {
     delivery_fee: string;
     minimum_order: string;
     estimated_delivery_time: string;
+    delivery_radius_km: string;
 }
 
 type BranchSettingsFormErrors = Partial<Record<keyof BranchSettingsFormValues, string>>;
@@ -63,6 +65,7 @@ const toFormValues = (branch: BranchSettings): BranchSettingsFormValues => ({
     delivery_fee: String(branch.delivery_fee),
     minimum_order: String(branch.minimum_order),
     estimated_delivery_time: String(branch.estimated_delivery_time),
+    delivery_radius_km: branch.delivery_radius_km === null ? '' : String(branch.delivery_radius_km),
 });
 
 const formatCurrency = (value: number) => `${Number(value).toFixed(2)} SAR`;
@@ -155,6 +158,7 @@ export default function RestaurantOperationsForm({ settings, onSaved }: Restaura
                 delivery_fee: formValues.delivery_fee,
                 minimum_order: formValues.minimum_order,
                 estimated_delivery_time: formValues.estimated_delivery_time,
+                delivery_radius_km: formValues.delivery_radius_km === '' ? null : formValues.delivery_radius_km,
             });
 
             const updatedBranch = data.data as BranchSettings;
@@ -345,6 +349,22 @@ export default function RestaurantOperationsForm({ settings, onSaved }: Restaura
                                         required
                                     />
                                     {fieldErrors.minimum_order && <div className="invalid-feedback">{fieldErrors.minimum_order}</div>}
+                                </div>
+
+                                <div className="mb-4">
+                                    <label htmlFor="delivery-radius" className="form-label fw-semibold">Delivery radius (km)</label>
+                                    <input
+                                        id="delivery-radius"
+                                        type="number"
+                                        min="0.01"
+                                        step="0.01"
+                                        className={`form-control ${fieldErrors.delivery_radius_km ? 'is-invalid' : ''}`}
+                                        value={formValues.delivery_radius_km}
+                                        onChange={(event) => updateField('delivery_radius_km', event.target.value)}
+                                        placeholder="No limit"
+                                    />
+                                    <div className="form-text">Orders from addresses farther than this from the branch are rejected. Leave empty for no limit.</div>
+                                    {fieldErrors.delivery_radius_km && <div className="invalid-feedback d-block">{fieldErrors.delivery_radius_km}</div>}
                                 </div>
 
                                 <h3 className="fs-6 fw-bold text-1000 mb-3">Available payment methods</h3>

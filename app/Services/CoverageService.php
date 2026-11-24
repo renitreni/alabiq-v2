@@ -12,7 +12,8 @@ use App\Models\RestaurantBranch;
  *  - A point inside an active delivery zone (circle or polygon) gets that
  *    zone's fee / minimum order / ETA, highest priority zone first.
  *  - A point outside all zones falls back to the branch's standard
- *    delivery terms (zone_name = "Standard Delivery").
+ *    delivery terms (zone_name = "Standard Delivery"), unless the branch
+ *    sets delivery_radius_km and the point is farther than that radius.
  *  - An unknown branch is not covered.
  */
 class CoverageService
@@ -54,6 +55,18 @@ class CoverageService
             }
         }
 
+        if ($branch->delivery_radius_km !== null && ! $this->isWithinRadius($branch, $latitude, $longitude)) {
+            return [
+                'covered' => false,
+                'in_custom_zone' => false,
+                'delivery_fee' => 0.0,
+                'minimum_order' => 0.0,
+                'estimated_delivery_time' => 0,
+                'zone_name' => null,
+                'branch_id' => $branch->id,
+            ];
+        }
+
         return [
             'covered' => true,
             'in_custom_zone' => false,
@@ -63,6 +76,26 @@ class CoverageService
             'zone_name' => 'Standard Delivery',
             'branch_id' => $branch->id,
         ];
+    }
+
+    /**
+     * Whether a point is within the branch's delivery radius. A branch
+     * without coordinates cannot be measured, so it is treated as outside.
+     */
+    private function isWithinRadius(RestaurantBranch $branch, float $latitude, float $longitude): bool
+    {
+        if ($branch->latitude === null || $branch->longitude === null) {
+            return false;
+        }
+
+        $distanceKm = app(LocationService::class)->haversineKm(
+            (float) $branch->latitude,
+            (float) $branch->longitude,
+            $latitude,
+            $longitude
+        );
+
+        return $distanceKm <= (float) $branch->delivery_radius_km;
     }
 
     /**
@@ -83,14 +116,22 @@ class CoverageService
      */
     public function validateAddressForBranch(?CustomerAddress $address, int $branchId): array
     {
-        if (! $address || $address->latitude === null || $address->longitude === null) {
+        if (! $address) {
             return ['valid' => true, 'coverage' => null, 'error' => null];
+        }
+
+        if ($address->latitude === null || $address->longitude === null) {
+            $hasRadius = RestaurantBranch::query()->whereKey($branchId)->whereNotNull('delivery_radius_km')->exists();
+
+            return $hasRadius
+                ? ['valid' => false, 'coverage' => null, 'error' => 'Pin your delivery address on the map so we can confirm it is within the delivery area']
+                : ['valid' => true, 'coverage' => null, 'error' => null];
         }
 
         $coverage = $this->checkCoverage($branchId, (float) $address->latitude, (float) $address->longitude);
 
         if (! $coverage['covered']) {
-            return ['valid' => false, 'coverage' => $coverage, 'error' => 'Selected branch is not available'];
+            return ['valid' => false, 'coverage' => $coverage, 'error' => 'Your delivery address is outside this branch\'s delivery area'];
         }
 
         return ['valid' => true, 'coverage' => $coverage, 'error' => null];

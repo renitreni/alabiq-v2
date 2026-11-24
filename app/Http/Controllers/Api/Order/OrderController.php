@@ -21,7 +21,7 @@ class OrderController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'customer_address_id' => 'nullable|integer|exists:customer_addresses,id',
+            'customer_address_id' => 'required|integer|exists:customer_addresses,id',
             'payment_method' => 'required|string|in:cash_on_delivery,tap_payments',
             'delivery_instructions' => 'nullable|string|max:500',
             'discount_amount' => 'nullable|numeric|min:0',

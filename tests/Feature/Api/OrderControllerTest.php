@@ -75,6 +75,14 @@ class OrderControllerTest extends TestCase
         ];
     }
 
+    private function customerAddress(array $attributes = []): CustomerAddress
+    {
+        return CustomerAddress::factory()->create(array_merge(
+            ['user_id' => $this->customer->id, 'latitude' => null, 'longitude' => null],
+            $attributes
+        ));
+    }
+
     private function checkoutCod(): Order
     {
         Sanctum::actingAs($this->customer);
@@ -82,6 +90,7 @@ class OrderControllerTest extends TestCase
         $response = $this->withSession(['alabiq_cart' => $this->cartSession()])
             ->postJson('/api/orders/checkout', [
                 'payment_method' => 'cash_on_delivery',
+                'customer_address_id' => $this->customerAddress()->id,
             ]);
 
         $response->assertCreated();
@@ -124,6 +133,7 @@ class OrderControllerTest extends TestCase
 
         $response = $this->withSession(['alabiq_cart' => $this->cartSession()])
             ->postJson('/api/orders/checkout', [
+                'customer_address_id' => $this->customerAddress()->id,
                 'payment_method' => 'tap_payments',
             ]);
 
@@ -143,6 +153,59 @@ class OrderControllerTest extends TestCase
                 'payment_method' => 'cash_on_delivery',
                 'customer_address_id' => $strangerAddress->id,
             ])->assertBadRequest();
+    }
+
+    public function test_checkout_requires_a_delivery_address(): void
+    {
+        Sanctum::actingAs($this->customer);
+
+        $this->withSession(['alabiq_cart' => $this->cartSession()])
+            ->postJson('/api/orders/checkout', ['payment_method' => 'cash_on_delivery'])
+            ->assertJsonValidationErrors(['customer_address_id']);
+    }
+
+    public function test_checkout_rejects_address_outside_branch_delivery_radius(): void
+    {
+        Sanctum::actingAs($this->customer);
+        $this->branch->update(['latitude' => 24.7136, 'longitude' => 46.6753, 'delivery_radius_km' => 5]);
+        $farAddress = $this->customerAddress(['latitude' => 24.8136, 'longitude' => 46.6753]);
+
+        $this->withSession(['alabiq_cart' => $this->cartSession()])
+            ->postJson('/api/orders/checkout', [
+                'payment_method' => 'cash_on_delivery',
+                'customer_address_id' => $farAddress->id,
+            ])
+            ->assertBadRequest()
+            ->assertJsonPath('message', "Your delivery address is outside this branch's delivery area");
+
+        $this->assertDatabaseCount('orders', 0);
+    }
+
+    public function test_checkout_accepts_address_inside_branch_delivery_radius(): void
+    {
+        Sanctum::actingAs($this->customer);
+        $this->branch->update(['latitude' => 24.7136, 'longitude' => 46.6753, 'delivery_radius_km' => 5]);
+        $nearAddress = $this->customerAddress(['latitude' => 24.7236, 'longitude' => 46.6753]);
+
+        $this->withSession(['alabiq_cart' => $this->cartSession()])
+            ->postJson('/api/orders/checkout', [
+                'payment_method' => 'cash_on_delivery',
+                'customer_address_id' => $nearAddress->id,
+            ])
+            ->assertCreated();
+    }
+
+    public function test_checkout_rejects_unpinned_address_when_branch_has_radius(): void
+    {
+        Sanctum::actingAs($this->customer);
+        $this->branch->update(['latitude' => 24.7136, 'longitude' => 46.6753, 'delivery_radius_km' => 5]);
+
+        $this->withSession(['alabiq_cart' => $this->cartSession()])
+            ->postJson('/api/orders/checkout', [
+                'payment_method' => 'cash_on_delivery',
+                'customer_address_id' => $this->customerAddress()->id,
+            ])
+            ->assertBadRequest();
     }
 
     public function test_customer_can_view_own_order_but_not_anothers(): void

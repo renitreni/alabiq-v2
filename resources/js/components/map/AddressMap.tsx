@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useMap } from '@/hooks/useMap';
 import type { MapCoordinates } from '@/lib/map';
 
@@ -13,6 +13,7 @@ interface MappableAddress {
 interface AddressMapProps {
     addresses: MappableAddress[];
     selectedAddressId?: number | null;
+    pickedCoordinates?: MapCoordinates | null;
     onLocationPick?: (coordinates: MapCoordinates) => void;
     className?: string;
     height?: string;
@@ -24,6 +25,7 @@ interface AddressMapProps {
 export default function AddressMap({
     addresses,
     selectedAddressId,
+    pickedCoordinates,
     onLocationPick,
     className = '',
     height = '400px',
@@ -39,6 +41,10 @@ export default function AddressMap({
     const [attempts, setAttempts] = useState(0);
     const pickCallback = useRef(onLocationPick);
     pickCallback.current = onLocationPick;
+    const isPickControlled = pickedCoordinates !== undefined;
+    const activePinnedCoords = isPickControlled ? pickedCoordinates : pinnedCoords;
+    const activePinLat = activePinnedCoords?.lat ?? null;
+    const activePinLng = activePinnedCoords?.lng ?? null;
 
     // Initialize the map once the container is mounted.
     useEffect(() => {
@@ -73,7 +79,11 @@ export default function AddressMap({
 
         getCurrentLocation()
             .then((coords) => {
-                setPinnedCoords(coords);
+                if (isPickControlled) {
+                    pickCallback.current?.(coords);
+                } else {
+                    setPinnedCoords(coords);
+                }
                 centerOn(coords, 16);
                 addMarker(coords);
                 setLocated(true);
@@ -82,45 +92,53 @@ export default function AddressMap({
                 // Geolocation denied or unavailable — map still opens at default.
                 setLocated(true);
             });
-    }, [isReady, locateOnLoad, getCurrentLocation, centerOn, addMarker]);
+    }, [isReady, locateOnLoad, getCurrentLocation, centerOn, addMarker, isPickControlled]);
 
     // Render saved-address markers and re-apply the user's pin.
     useEffect(() => {
         if (!isReady || !containerRef.current) return;
         clearMarkers();
 
-        const withCoords = addresses.filter((a) => a.latitude && a.longitude);
+        const withCoords = addresses.filter((a) => a.latitude != null && a.longitude != null);
         if (withCoords.length) {
             addMarkers(
                 withCoords.map((a) => ({ lat: a.latitude!, lng: a.longitude! }))
             );
         }
 
-        if (pinnedCoords) {
-            addMarker(pinnedCoords);
+        if (activePinLat !== null && activePinLng !== null) {
+            addMarker({ lat: activePinLat, lng: activePinLng });
         }
         resize();
-    }, [addresses, isReady, clearMarkers, addMarkers, pinnedCoords, addMarker, resize]);
+    }, [addresses, isReady, clearMarkers, addMarkers, activePinLat, activePinLng, addMarker, resize]);
+
+    // Center when coordinates come from geocoding or the browser location.
+    useEffect(() => {
+        if (!isReady || activePinLat === null || activePinLng === null) return;
+        centerOn({ lat: activePinLat, lng: activePinLng }, 16);
+    }, [isReady, activePinLat, activePinLng, centerOn]);
 
     // Center on the selected/default address when no manual pin is active.
     useEffect(() => {
-        if (!isReady || selectedAddressId == null || pinnedCoords) return;
+        if (!isReady || selectedAddressId == null || activePinLat !== null || activePinLng !== null) return;
         const address = addresses.find((a) => a.id === selectedAddressId);
-        if (address?.latitude && address?.longitude) {
+        if (address?.latitude != null && address?.longitude != null) {
             centerOn({ lat: address.latitude, lng: address.longitude });
         }
-    }, [selectedAddressId, addresses, isReady, centerOn, pinnedCoords]);
+    }, [selectedAddressId, addresses, isReady, centerOn, activePinLat, activePinLng]);
 
     // Clicking the map pins a new location and notifies the parent.
     useEffect(() => {
         if (!isReady) return;
         onMapClick((coordinates: MapCoordinates) => {
-            setPinnedCoords(coordinates);
+            if (!isPickControlled) {
+                setPinnedCoords(coordinates);
+            }
             addMarker(coordinates);
             centerOn(coordinates, 16);
             pickCallback.current?.(coordinates);
         });
-    }, [isReady, onMapClick, addMarker, centerOn]);
+    }, [isReady, onMapClick, addMarker, centerOn, isPickControlled]);
 
     if (error) {
         return (
@@ -142,9 +160,9 @@ export default function AddressMap({
                     Map failed to load. Please refresh the page.
                 </div>
             )}
-            {pinnedCoords && (
+            {activePinnedCoords && (
                 <div className="absolute top-2 start-2 z-3 bg-white border border-300 px-2 py-1 rounded shadow-sm text-700 small">
-                    {pinnedCoords.lat.toFixed(5)}, {pinnedCoords.lng.toFixed(5)}
+                    {activePinnedCoords.lat.toFixed(5)}, {activePinnedCoords.lng.toFixed(5)}
                 </div>
             )}
         </div>

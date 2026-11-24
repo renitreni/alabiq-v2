@@ -65,6 +65,7 @@ class RestaurantSettingsController extends Controller
             'delivery_fee' => ['nullable', 'numeric', 'min:0', 'max:999999.99'],
             'minimum_order' => ['nullable', 'numeric', 'min:0', 'max:999999.99'],
             'estimated_delivery_time' => ['nullable', 'integer', 'min:1', 'max:120'],
+            'delivery_radius_km' => ['nullable', 'numeric', 'gt:0', 'max:9999.99'],
             'is_active' => ['nullable', 'boolean'],
             'accepts_orders' => ['nullable', 'boolean'],
         ]);
@@ -91,6 +92,7 @@ class RestaurantSettingsController extends Controller
             'delivery_fee' => $validated['delivery_fee'] ?? 0,
             'minimum_order' => $validated['minimum_order'] ?? 0,
             'estimated_delivery_time' => $validated['estimated_delivery_time'] ?? 30,
+            'delivery_radius_km' => $validated['delivery_radius_km'] ?? null,
             'is_active' => $request->boolean('is_active', true),
             'accepts_orders' => $request->boolean('accepts_orders', true),
         ]);
@@ -123,6 +125,7 @@ class RestaurantSettingsController extends Controller
             'delivery_fee' => ['required', 'numeric', 'min:0', 'max:999999.99'],
             'minimum_order' => ['required', 'numeric', 'min:0', 'max:999999.99'],
             'estimated_delivery_time' => ['required', 'integer', 'min:1', 'max:120'],
+            'delivery_radius_km' => ['nullable', 'numeric', 'gt:0', 'max:9999.99'],
         ]);
 
         $old = $this->auditableValues($branch);
@@ -169,6 +172,7 @@ class RestaurantSettingsController extends Controller
             'delivery_fee' => (float) $branch->delivery_fee,
             'minimum_order' => (float) $branch->minimum_order,
             'estimated_delivery_time' => (int) $branch->estimated_delivery_time,
+            'delivery_radius_km' => $branch->delivery_radius_km !== null ? (float) $branch->delivery_radius_km : null,
             'is_open' => $branch->isOpen(),
         ];
     }
@@ -188,6 +192,7 @@ class RestaurantSettingsController extends Controller
             'delivery_fee' => (float) $branch->delivery_fee,
             'minimum_order' => (float) $branch->minimum_order,
             'estimated_delivery_time' => (int) $branch->estimated_delivery_time,
+            'delivery_radius_km' => $branch->delivery_radius_km !== null ? (float) $branch->delivery_radius_km : null,
         ];
     }
 }

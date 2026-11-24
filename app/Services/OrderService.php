@@ -153,7 +153,7 @@ class OrderService
                             continue;
                         }
 
-                        foreach ($selectedOption['value_ids'] as $valueId) {
+                        foreach ($selectedOption['value_ids'] ?? [$selectedOption['value_id']] as $valueId) {
                             $value = $option->values()->find($valueId);
                             if ($value) {
                                 $optionsPrice += (float) $value->price_adjustment;
