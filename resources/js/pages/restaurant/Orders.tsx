@@ -4,6 +4,7 @@ import { RestaurantLayout } from '@/components/layout/RestaurantLayout';
 import { Card, CardBody } from '@/components/ui/Card';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { PageScaffold } from '@/components/ui/PageScaffold';
+import { ORDERS_CHANGED_EVENT } from '@/components/restaurant/NewOrderBanner';
 import api from '@/lib/axios';
 
 interface RestaurantOrder {
@@ -49,15 +50,33 @@ export default function Orders() {
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        setLoading(true);
-        setError(null);
+        let first = true;
+        const load = () => {
+            if (first) {
+                setLoading(true);
+            } else if (document.visibilityState !== 'visible') {
+                return;
+            }
+            setError(null);
 
-        api.get('/restaurant/orders', {
-            params: status ? { status } : {},
-        })
-            .then(({ data }) => setOrders(data?.data ?? []))
-            .catch((e: any) => setError(e?.response?.data?.message ?? 'Could not load restaurant orders.'))
-            .finally(() => setLoading(false));
+            api.get('/restaurant/orders', {
+                params: status ? { status } : {},
+            })
+                .then(({ data }) => setOrders(data?.data ?? []))
+                .catch((e: any) => setError(e?.response?.data?.message ?? 'Could not load restaurant orders.'))
+                .finally(() => {
+                    first = false;
+                    setLoading(false);
+                });
+        };
+
+        load();
+        const timer = setInterval(load, 15000);
+        window.addEventListener(ORDERS_CHANGED_EVENT, load);
+        return () => {
+            clearInterval(timer);
+            window.removeEventListener(ORDERS_CHANGED_EVENT, load);
+        };
     }, [status]);
 
     return (

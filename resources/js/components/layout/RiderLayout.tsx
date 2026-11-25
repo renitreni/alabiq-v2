@@ -1,6 +1,7 @@
 import React from 'react';
 import { Head } from '@inertiajs/react';
 import { Navbar } from '@/components/ui/Navbar';
+import { useNewOrderAlerts } from '@/hooks/useNewOrderAlerts';
 
 interface RiderLayoutProps {
     children: React.ReactNode;
@@ -13,6 +14,8 @@ export const RiderLayout: React.FC<RiderLayoutProps> = ({
     title = 'Rider Dashboard - Alabiq',
     rider,
 }) => {
+    const { orders, alertOrders, dismiss } = useNewOrderAlerts(!!rider?.isOnline);
+
     return (
         <>
             <Head>
@@ -66,6 +69,24 @@ export const RiderLayout: React.FC<RiderLayoutProps> = ({
                         </div>
                     }
                 />
+
+                {alertOrders.length > 0 && (
+                    <div className="container px-4 pt-3">
+                        <div className="alert alert-warning d-flex align-items-center justify-content-between mb-0" role="alert">
+                            <span>
+                                <strong>New order available!</strong>{' '}
+                                {alertOrders.length === 1
+                                    ? `Order #${alertOrders[0].id}${alertOrders[0].restaurant?.name ? ` from ${alertOrders[0].restaurant.name}` : ''}`
+                                    : `${alertOrders.length} new orders`}
+                                {orders.length > alertOrders.length && ` (${orders.length} waiting in total)`}
+                            </span>
+                            <span className="d-flex gap-2">
+                                <a href="/rider/deliveries" className="btn btn-sm btn-warning">View deliveries</a>
+                                <button type="button" className="btn btn-sm btn-outline-secondary" onClick={dismiss}>Dismiss</button>
+                            </span>
+                        </div>
+                    </div>
+                )}
 
                 <main className="flex-1 py-4">{children}</main>
 

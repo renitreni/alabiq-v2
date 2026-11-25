@@ -47,6 +47,16 @@ class OrderTrackingController extends Controller
             }
         }
 
+        $order->loadMissing(['branch', 'restaurant']);
+        $origin = $order->branch ?? $order->restaurant;
+        $restaurantLocation = $origin && $origin->latitude !== null && $origin->longitude !== null
+            ? [
+                'name' => $order->restaurant?->name,
+                'latitude' => (float) $origin->latitude,
+                'longitude' => (float) $origin->longitude,
+            ]
+            : null;
+
         $events = DeliveryTrackingEvent::query()
             ->where('order_id', $order->id)
             ->orderByDesc('created_at')
@@ -62,6 +72,7 @@ class OrderTrackingController extends Controller
                     ? $rider->only(['id', 'vehicle_type', 'rating']) + ['name' => $rider->user?->name]
                     : null,
                 'location' => $location,
+                'restaurant' => $restaurantLocation,
                 'eta_minutes' => $etaMinutes,
                 'events' => $events,
             ],

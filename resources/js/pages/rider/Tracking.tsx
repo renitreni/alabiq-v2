@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { usePage } from '@inertiajs/react';
-import { useParams } from 'react-router-dom';
+import { useParams } from '@/hooks/useParams';
 import { RiderLayout } from '@/components/layout/RiderLayout';
 import { Card, CardBody } from '@/components/ui/Card';
 import api from '@/lib/axios';

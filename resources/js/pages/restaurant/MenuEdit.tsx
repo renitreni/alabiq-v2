@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { router, usePage } from '@inertiajs/react';
-import { useParams } from 'react-router-dom';
+import { useParams } from '@/hooks/useParams';
 import { MenuItemForm, MenuCategoryOption, MenuItemFormValues } from '@/components/forms/MenuItemForm';
 import { RestaurantLayout } from '@/components/layout/RestaurantLayout';
 import { Card, CardBody } from '@/components/ui/Card';

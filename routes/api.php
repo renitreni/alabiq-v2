@@ -62,6 +62,7 @@ Route::middleware('auth:sanctum')->prefix('orders')->name('orders.')->group(func
 Route::middleware('auth:sanctum')->prefix('rider')->name('rider.')->group(function () {
     Route::put('/availability', [RiderController::class, 'updateAvailability'])->name('availability');
     Route::post('/location', [RiderController::class, 'updateLocation'])->name('location');
+    Route::get('/available-orders', [RiderController::class, 'availableOrders'])->name('available-orders');
     Route::get('/assignments', [RiderController::class, 'assignments'])->name('assignments');
     Route::post('/assignments/{assignment}/accept', [RiderController::class, 'accept'])->name('assignments.accept');
     Route::post('/assignments/{assignment}/reject', [RiderController::class, 'reject'])->name('assignments.reject');

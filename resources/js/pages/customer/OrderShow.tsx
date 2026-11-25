@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { usePage } from '@inertiajs/react';
-import { useParams } from 'react-router-dom';
+import { useParams } from '@/hooks/useParams';
 import { CustomerLayout } from '@/components/layout/CustomerLayout';
 import { Card, CardBody } from '@/components/ui/Card';
 import { useMapbox } from '@/hooks/useMapbox';
@@ -17,6 +17,7 @@ interface TrackingPayload {
     status: string;
     location?: { latitude: number; longitude: number; recorded_at?: string } | null;
     eta_minutes?: number | null;
+    restaurant?: { name?: string; latitude: number; longitude: number } | null;
     rider?: { id: number; name?: string; vehicle_type: string } | null;
     assignment?: { status: string } | null;
     events: TrackingEvent[];
@@ -51,17 +52,25 @@ export default function OrderShow() {
     const [unavailable, setUnavailable] = useState(false);
     const mapContainerRef = useRef<HTMLDivElement>(null);
     const markerRef = useRef<any>(null);
+    const restaurantMarkerRef = useRef<any>(null);
+    const failures = useRef(0);
 
     const load = useCallback(async () => {
         try {
             const { data } = await api.get(`/orders/${orderParam}/tracking`);
             setTracking(data?.data ?? null);
+            failures.current = 0;
             setError(null);
         } catch (e: any) {
             if (e?.response?.status === 403) {
                 setUnavailable(true);
-            } else {
-                setError('Could not load tracking information.');
+                return;
+            }
+            // Tracking polls every 4s; ignore a single blip and only surface persistent failures.
+            failures.current += 1;
+            if (failures.current >= 2) {
+                const status = e?.response?.status;
+                setError(`Could not load tracking information${status ? ` (error ${status})` : ' (network problem)'}.`);
             }
         }
     }, [orderParam]);
@@ -89,6 +98,27 @@ export default function OrderShow() {
         }
         centerOn(coords, 14);
     }, [tracking?.location, mapToken, addMarker, centerOn]);
+
+    useEffect(() => {
+        const origin = tracking?.restaurant;
+        if (!origin || !map || !window.mapboxgl) return;
+
+        const lngLat: [number, number] = [Number(origin.longitude), Number(origin.latitude)];
+        if (!restaurantMarkerRef.current) {
+            const el = document.createElement('div');
+            el.title = origin.name ? `${origin.name} (pickup)` : 'Restaurant (pickup)';
+            el.style.cssText =
+                'width:36px;height:36px;border-radius:50%;background:#2563EB;border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;font-size:18px;';
+            el.textContent = '🍴';
+            restaurantMarkerRef.current = new window.mapboxgl.Marker({ element: el })
+                .setLngLat(lngLat)
+                .setPopup(new window.mapboxgl.Popup({ offset: 20 }).setText(origin.name ?? 'Restaurant'))
+                .addTo(map);
+            if (!tracking?.location) centerOn({ lng: lngLat[0], lat: lngLat[1] }, 14);
+        } else {
+            restaurantMarkerRef.current.setLngLat(lngLat);
+        }
+    }, [tracking?.restaurant, tracking?.location, map, centerOn]);
 
     if (unavailable) {
         return (

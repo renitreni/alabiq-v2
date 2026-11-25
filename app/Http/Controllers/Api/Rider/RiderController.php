@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Rider;
 
 use App\Http\Controllers\Controller;
 use App\Models\DeliveryAssignment;
+use App\Models\Order;
 use App\Models\Rider;
 use App\Models\RiderAvailability;
 use App\Services\DispatchService;
@@ -61,6 +62,7 @@ class RiderController extends Controller
             'speed' => 'nullable|numeric|min:0',
             'heading' => 'nullable|numeric|between:0,360',
             'accuracy' => 'nullable|numeric|min:0',
+            'force' => 'nullable|boolean',
         ]);
 
         $rider = $this->currentRider();
@@ -74,6 +76,7 @@ class RiderController extends Controller
                 'speed' => $validated['speed'] ?? null,
                 'heading' => $validated['heading'] ?? null,
                 'accuracy' => $validated['accuracy'] ?? null,
+                'force' => (bool) ($validated['force'] ?? false),
             ]
         );
 
@@ -84,6 +87,35 @@ class RiderController extends Controller
                 'location' => $result['rider_location'],
             ],
         ]);
+    }
+
+    /**
+     * Orders placed and still waiting for a rider (polled by online riders
+     * to raise "new order available" alerts).
+     */
+    public function availableOrders(): JsonResponse
+    {
+        $rider = $this->currentRider();
+        $this->authorize('updateLocation', $rider);
+
+        if (! $rider->is_online) {
+            return response()->json(['data' => []]);
+        }
+
+        $orders = Order::query()
+            ->whereIn('status', [
+                Order::STATUS_PLACED,
+                Order::STATUS_ACCEPTED,
+                Order::STATUS_PREPARING,
+                Order::STATUS_READY,
+            ])
+            ->whereDoesntHave('assignments', fn ($q) => $q->whereIn('status', DeliveryAssignment::ACTIVE_STATUSES))
+            ->with('restaurant:id,name')
+            ->latest('id')
+            ->limit(20)
+            ->get(['id', 'restaurant_id', 'status', 'total_amount', 'delivery_fee', 'created_at']);
+
+        return response()->json(['data' => $orders]);
     }
 
     /**

@@ -15,6 +15,8 @@ use Illuminate\Support\Facades\Cache;
  *    entirely: no row, no cache write, no broadcast.
  *  - Accepted updates persist a RiderLocation row, refresh the cached latest
  *    location (TTL from config) and broadcast RiderLocationUpdated.
+ *  - Passing meta['force'] = true bypasses the throttle (used to log the
+ *    rider's position when a new order is placed).
  *  - The throttle reference is the cached location first, then the most
  *    recently recorded DB location.
  */
@@ -46,7 +48,7 @@ class RiderLocationService
             ? PHP_FLOAT_MAX
             : $this->locationService->haversineKm($lastLat, $lastLng, $latitude, $longitude) * 1000;
 
-        if ($lastLat !== null && $movedM < (float) config('alabiq.rider_location_min_distance_m', 25)) {
+        if (! ($meta['force'] ?? false) && $lastLat !== null && $movedM < (float) config('alabiq.rider_location_min_distance_m', 25)) {
             return ['persisted' => false, 'rider_location' => null, 'moved_m' => $movedM];
         }
 

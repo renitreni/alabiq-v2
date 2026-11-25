@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { usePage } from '@inertiajs/react';
-import { useParams } from 'react-router-dom';
+import { useParams } from '@/hooks/useParams';
 import { RestaurantLayout } from '@/components/layout/RestaurantLayout';
 import Button from '@/components/ui/Button';
 import { Card, CardBody } from '@/components/ui/Card';

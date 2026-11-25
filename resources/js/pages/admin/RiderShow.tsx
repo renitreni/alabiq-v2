@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { usePage } from '@inertiajs/react';
-import { useParams } from 'react-router-dom';
+import { useParams } from '@/hooks/useParams';
 import { SuperAdminLayout } from '@/components/layout/SuperAdminLayout';
 import { Card, CardBody } from '@/components/ui/Card';
 import api from '@/lib/axios';

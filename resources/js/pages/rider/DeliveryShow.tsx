@@ -1,5 +1,5 @@
 import { usePage } from '@inertiajs/react';
-import { useParams } from 'react-router-dom';
+import { useParams } from '@/hooks/useParams';
 import { RiderLayout } from '@/components/layout/RiderLayout';
 import Button from '@/components/ui/Button';
 import { Card, CardBody } from '@/components/ui/Card';

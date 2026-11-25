@@ -103,6 +103,39 @@ class RiderApiTest extends TestCase
         ]);
     }
 
+    public function test_forced_location_is_logged_even_when_rider_has_not_moved(): void
+    {
+        Sanctum::actingAs($this->riderUser);
+        $payload = ['latitude' => 24.7136, 'longitude' => 46.6753];
+
+        $this->postJson('/api/rider/location', $payload)->assertJsonPath('data.persisted', true);
+        $this->postJson('/api/rider/location', $payload)->assertJsonPath('data.persisted', false);
+        $this->postJson('/api/rider/location', $payload + ['force' => true])->assertJsonPath('data.persisted', true);
+
+        $this->assertDatabaseCount('rider_locations', 2);
+    }
+
+    public function test_online_rider_sees_orders_waiting_for_a_rider(): void
+    {
+        $placed = Order::factory()->create(['status' => Order::STATUS_PLACED]);
+        Order::factory()->create(['status' => Order::STATUS_DELIVERED]);
+        Sanctum::actingAs($this->riderUser);
+
+        $this->getJson('/api/rider/available-orders')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.id', $placed->id);
+    }
+
+    public function test_offline_rider_sees_no_available_orders(): void
+    {
+        Order::factory()->create(['status' => Order::STATUS_PLACED]);
+        $this->rider->update(['is_online' => false]);
+        Sanctum::actingAs($this->riderUser);
+
+        $this->getJson('/api/rider/available-orders')->assertOk()->assertJsonCount(0, 'data');
+    }
+
     public function test_rider_lists_own_assignments(): void
     {
         Sanctum::actingAs($this->riderUser);

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Head } from '@inertiajs/react';
 import { Navbar } from '@/components/ui/Navbar';
+import { NewOrderBanner } from '@/components/restaurant/NewOrderBanner';
 
 interface RestaurantLayoutProps {
     children: React.ReactNode;
@@ -63,6 +64,8 @@ export const RestaurantLayout: React.FC<RestaurantLayoutProps> = ({
                         </div>
                     }
                 />
+
+                <NewOrderBanner />
 
                 <main className="flex-1 py-4">{children}</main>
 
