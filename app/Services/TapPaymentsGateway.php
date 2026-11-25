@@ -20,8 +20,8 @@ class TapPaymentsGateway implements PaymentGateway
         $this->baseUrl = $sandbox
             ? 'https://sandbox.api.tap.company/v2'
             : 'https://api.tap.company/v2';
-        $this->secretKey = config('alabiq.tap_payments.secret_key', '');
-        $this->webhookSecret = config('alabiq.tap_payments.webhook_secret', '');
+        $this->secretKey = (string) config('alabiq.tap_payments.secret_key', '');
+        $this->webhookSecret = (string) config('alabiq.tap_payments.webhook_secret', '');
     }
 
     public function initiate(Order $order, PaymentTransaction $transaction): array

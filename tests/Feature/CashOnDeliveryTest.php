@@ -49,6 +49,15 @@ class CashOnDeliveryTest extends TestCase
         $this->assertFalse(LedgerEntry::where('order_id', $order->id)->exists());
     }
 
+    public function test_cash_flow_works_without_tap_credentials(): void
+    {
+        config(['alabiq.tap_payments.secret_key' => null, 'alabiq.tap_payments.webhook_secret' => null]);
+
+        $order = $this->codOrder(Order::STATUS_PLACED);
+
+        $this->assertTrue(PaymentTransaction::where('order_id', $order->id)->exists());
+    }
+
     public function test_cash_collection_is_idempotent(): void
     {
         $order = $this->codOrder(Order::STATUS_ON_THE_WAY);
