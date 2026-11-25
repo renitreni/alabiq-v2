@@ -171,13 +171,13 @@ class CartValidationTest extends TestCase
 
     public function test_validate_for_checkout_z_branch_closed_fails()
     {
-        // Create a branch with hours closed at 12:00 (frozen time)
+        // Closed at the frozen 12:00 local time
         $closedBranch = RestaurantBranch::factory()->create([
             'restaurant_id' => $this->restaurant->id,
             'is_active' => true,
             'accepts_orders' => true,
-            'opens_at' => '14:00',
-            'closes_at' => '15:00',
+            'opens_at' => '10:00',
+            'closes_at' => '11:00',
             'delivery_fee' => 10.00,
             'minimum_order' => 20.00,
             'estimated_delivery_time' => 30,

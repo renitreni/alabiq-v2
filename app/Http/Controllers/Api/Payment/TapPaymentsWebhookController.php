@@ -8,6 +8,7 @@ use App\Models\PaymentWebhook;
 use App\Services\PaymentService;
 use App\Services\TapPaymentsGateway;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
 class TapPaymentsWebhookController extends Controller
@@ -72,13 +73,25 @@ class TapPaymentsWebhookController extends Controller
     /**
      * Handle customer return from Tap checkout (redirect URL).
      */
-    public function return(Request $request): JsonResponse
+    public function return(Request $request): RedirectResponse
     {
-        $status = $request->query('status');
+        $orderId = (int) $request->query('order');
+        $chargeId = (string) $request->query('tap_id');
 
-        return response()->json([
-            'message' => 'Payment return handled',
-            'data' => ['status' => $status],
-        ]);
+        // Never trust the redirect query: confirm the charge with Tap itself.
+        if ($chargeId !== '') {
+            try {
+                $charge = $this->gateway->verify($chargeId);
+                $this->paymentService->handleWebhook([
+                    'gateway_transaction_id' => $charge['gateway_transaction_id'],
+                    'status' => $charge['status'],
+                    'raw_response' => $charge['raw_response'],
+                ]);
+            } catch (\Throwable $e) {
+                report($e);
+            }
+        }
+
+        return redirect()->route('customer.orders.show', ['order' => $orderId]);
     }
 }

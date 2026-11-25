@@ -107,6 +107,40 @@ class PaymentService
     }
 
     /**
+     * Cash collected by the rider on delivery: settle the COD transaction and
+     * post the ledger entries (idempotent).
+     */
+    public function recordCashCollected(Order $order): ?PaymentTransaction
+    {
+        $transaction = $this->initiateCashOnDelivery($order)['transaction'];
+
+        if ($transaction->status !== PaymentTransaction::STATUS_PENDING) {
+            return $transaction;
+        }
+
+        return DB::transaction(function () use ($order, $transaction) {
+            $transaction->update(['status' => PaymentTransaction::STATUS_SUCCEEDED]);
+            $this->ledgerService->postPayment($order, $transaction);
+
+            return $transaction->fresh();
+        });
+    }
+
+    /**
+     * A cancelled cash order never collected money, so close its transaction.
+     */
+    public function voidCashOrder(Order $order, ?string $reason = null): void
+    {
+        PaymentTransaction::where('order_id', $order->id)
+            ->where('gateway', PaymentTransaction::GATEWAY_CASH)
+            ->where('status', PaymentTransaction::STATUS_PENDING)
+            ->update([
+                'status' => PaymentTransaction::STATUS_FAILED,
+                'failure_reason' => $reason ?? 'Order cancelled',
+            ]);
+    }
+
+    /**
      * Handle a webhook event (idempotent).
      */
     public function handleWebhook(array $parsedPayload): ?PaymentTransaction

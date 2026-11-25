@@ -95,6 +95,10 @@ class OrderService
 
         $paymentMethod = $validatedData['payment_method'] ?? 'cash_on_delivery';
 
+        if (! ($cart['payment_methods'][$paymentMethod] ?? false)) {
+            throw new \Exception('The selected payment method is not available');
+        }
+
         // Cash on delivery skips the payment gate and goes straight to the
         // restaurant; online payments wait in pending_payment until the
         // payment webhook confirms (PaymentService::handleWebhook).
@@ -196,6 +200,10 @@ class OrderService
                 'note' => 'Order placed',
             ]);
 
+            if ($paymentMethod === 'cash_on_delivery') {
+                app(PaymentService::class)->initiate($order);
+            }
+
             // Clear the cart
             $this->cartService->clear();
 
@@ -222,12 +230,20 @@ class OrderService
         } elseif ($toStatus === Order::STATUS_CANCELLED) {
             $updates['cancelled_at'] = now();
             $updates['cancellation_reason'] = $note;
-            $updates['payment_status'] = 'refunded';
+            $updates['payment_status'] = $order->payment_method === 'cash_on_delivery' ? 'failed' : 'refunded';
         } elseif ($toStatus === Order::STATUS_REFUNDED) {
             $updates['payment_status'] = 'refunded';
         }
 
         $order->update($updates);
+
+        if ($order->payment_method === 'cash_on_delivery') {
+            if ($toStatus === Order::STATUS_DELIVERED) {
+                app(PaymentService::class)->recordCashCollected($order);
+            } elseif ($toStatus === Order::STATUS_CANCELLED) {
+                app(PaymentService::class)->voidCashOrder($order, $note);
+            }
+        }
 
         OrderStatusHistory::create([
             'order_id' => $order->id,

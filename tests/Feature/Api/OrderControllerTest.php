@@ -129,6 +129,7 @@ class OrderControllerTest extends TestCase
 
     public function test_online_payment_checkout_waits_in_pending_payment(): void
     {
+        config(['alabiq.online_payments_enabled' => true]);
         Sanctum::actingAs($this->customer);
 
         $response = $this->withSession(['alabiq_cart' => $this->cartSession()])

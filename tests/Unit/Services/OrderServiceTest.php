@@ -184,6 +184,8 @@ class OrderServiceTest extends TestCase
 
     public function test_place_order_with_online_payment_waits_in_pending_payment()
     {
+        config(['alabiq.online_payments_enabled' => true]);
+
         session(['alabiq_cart' => [
             'restaurant_id' => $this->restaurant->id,
             'branch_id' => $this->branch->id,

@@ -93,6 +93,7 @@ class RestaurantOrderManagementTest extends TestCase
     public function test_restaurant_can_reject_own_order()
     {
         $order = Order::factory()->placed()->create([
+            'payment_method' => 'cash_on_delivery',
             'user_id' => $this->customer->id,
             'restaurant_id' => $this->restaurant->id,
             'branch_id' => $this->branch->id,
@@ -105,7 +106,7 @@ class RestaurantOrderManagementTest extends TestCase
         $this->assertEquals(Order::STATUS_CANCELLED, $order->status);
         $this->assertNotNull($order->cancelled_at);
         $this->assertEquals('Too busy today', $order->cancellation_reason);
-        $this->assertEquals('refunded', $order->payment_status);
+        $this->assertEquals('failed', $order->payment_status);
     }
 
     public function test_restaurant_cannot_reject_other_restaurant_order()
@@ -283,6 +284,7 @@ class RestaurantOrderManagementTest extends TestCase
     {
         $admin = User::factory()->create();
         $order = Order::factory()->placed()->create([
+            'payment_method' => 'cash_on_delivery',
             'user_id' => $this->customer->id,
             'restaurant_id' => $this->restaurant->id,
             'branch_id' => $this->branch->id,
@@ -294,7 +296,7 @@ class RestaurantOrderManagementTest extends TestCase
         $order->refresh();
         $this->assertEquals(Order::STATUS_CANCELLED, $order->status);
         $this->assertEquals('Platform policy violation', $order->cancellation_reason);
-        $this->assertEquals('refunded', $order->payment_status);
+        $this->assertEquals('failed', $order->payment_status);
     }
 
     public function test_admin_can_process_refund_on_delivered_order()

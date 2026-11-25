@@ -193,7 +193,7 @@ export default function Checkout() {
                                     <div className="list-group">
                                         {([
                                             ['cash_on_delivery', 'Cash on delivery', 'Pay the rider when your order arrives.'],
-                                            ['tap_payments', 'Pay online (Tap)', 'Pay securely by card now.'],
+                                            ['tap_payments', 'Pay online (Tap)', 'Pay securely now with card, mada, Apple Pay or STC Pay.'],
                                         ] as [PaymentMethod, string, string][])
                                             .filter(([method]) => checkout.payment_methods?.[method] ?? method === 'cash_on_delivery')
                                             .map(([method, title, hint]) => (

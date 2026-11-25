@@ -82,9 +82,14 @@ class RestaurantBranch extends Model
 
     public function isOpen(): bool
     {
-        $now = now()->format('H:i');
+        $now = now(config('alabiq.timezone', 'Asia/Riyadh'))->format('H:i');
         $opensAt = $this->opens_at?->format('H:i') ?? '00:00';
         $closesAt = $this->closes_at?->format('H:i') ?? '23:59';
+
+        // Hours that run past midnight (e.g. 18:00-02:00) wrap around.
+        if ($opensAt > $closesAt) {
+            return $now >= $opensAt || $now <= $closesAt;
+        }
 
         return $opensAt <= $now && $closesAt >= $now;
     }
