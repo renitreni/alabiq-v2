@@ -180,7 +180,7 @@
     ]
   },
   "resources/js/app.tsx": {
-    "file": "assets/app-jNGuZfmp.js",
+    "file": "assets/app-C4lZ0srg.js",
     "name": "app",
     "src": "resources/js/app.tsx",
     "isEntry": true,
@@ -272,7 +272,7 @@
     ]
   },
   "resources/js/pages/admin/RiderShow.tsx": {
-    "file": "assets/RiderShow-DekxRC72.js",
+    "file": "assets/RiderShow-CN3tW0QG.js",
     "name": "RiderShow",
     "src": "resources/js/pages/admin/RiderShow.tsx",
     "isDynamicEntry": true,
@@ -407,7 +407,7 @@
     ]
   },
   "resources/js/pages/customer/Checkout.tsx": {
-    "file": "assets/Checkout-CN3yHudY.js",
+    "file": "assets/Checkout-DWYfC4NY.js",
     "name": "Checkout",
     "src": "resources/js/pages/customer/Checkout.tsx",
     "isDynamicEntry": true,
@@ -439,7 +439,7 @@
     ]
   },
   "resources/js/pages/customer/OrderShow.tsx": {
-    "file": "assets/OrderShow-DQn5Nrhm.js",
+    "file": "assets/OrderShow-ByCCswh-.js",
     "name": "OrderShow",
     "src": "resources/js/pages/customer/OrderShow.tsx",
     "isDynamicEntry": true,
@@ -549,7 +549,7 @@
     ]
   },
   "resources/js/pages/restaurant/MenuEdit.tsx": {
-    "file": "assets/MenuEdit-xXRuWjUb.js",
+    "file": "assets/MenuEdit-CCXqhfCY.js",
     "name": "MenuEdit",
     "src": "resources/js/pages/restaurant/MenuEdit.tsx",
     "isDynamicEntry": true,
@@ -565,7 +565,7 @@
     ]
   },
   "resources/js/pages/restaurant/OrderShow.tsx": {
-    "file": "assets/OrderShow-Bu_u10jQ.js",
+    "file": "assets/OrderShow-BsYRMwSx.js",
     "name": "OrderShow",
     "src": "resources/js/pages/restaurant/OrderShow.tsx",
     "isDynamicEntry": true,
@@ -665,7 +665,7 @@
     ]
   },
   "resources/js/pages/rider/DeliveryShow.tsx": {
-    "file": "assets/DeliveryShow-ikd89IUY.js",
+    "file": "assets/DeliveryShow-DziriBE9.js",
     "name": "DeliveryShow",
     "src": "resources/js/pages/rider/DeliveryShow.tsx",
     "isDynamicEntry": true,
@@ -706,7 +706,7 @@
     ]
   },
   "resources/js/pages/rider/Tracking.tsx": {
-    "file": "assets/Tracking-CyKXhVqo.js",
+    "file": "assets/Tracking-Dlc_xiPF.js",
     "name": "Tracking",
     "src": "resources/js/pages/rider/Tracking.tsx",
     "isDynamicEntry": true,
